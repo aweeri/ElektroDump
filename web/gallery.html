@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ElektroDump — Gallery</title>
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<header class="topbar" id="topbar"></header>
+<main>
+  <div class="card">
+    <h2>Filters</h2>
+    <div class="toolbar">
+      <label>type
+        <select id="filter-type">
+          <option value="">all</option>
+          <option value="visual">visual</option>
+          <option value="ir">ir</option>
+          <option value="ir_cloud">ir_cloud</option>
+          <option value="ir_cloud_map">ir_cloud_map</option>
+        </select>
+      </label>
+      <label>date <input id="filter-date" type="date"></label>
+      <label>limit <input id="filter-limit" type="number" value="60" min="1" max="1000" size="4"></label>
+      <button id="filter-apply" class="primary">Apply</button>
+      <span class="muted" id="gallery-count"></span>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Products</h2>
+    <div class="gallery-grid" id="gallery"><p class="empty">loading…</p></div>
+  </div>
+  <div class="card">
+    <h2>Detail</h2>
+    <div id="gallery-detail"><p class="empty">Select a product.</p></div>
+  </div>
+</main>
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/gallery.js"></script>
+</body>
+</html>

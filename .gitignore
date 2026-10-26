@@ -1,0 +1,17 @@
+# Build output
+/build/
+/build/gen/*.inc
+/build/*_fixture/
+*.o
+*.d
+*.a
+*.so
+
+# Runtime data
+/data/
+*.log
+
+# Editor / OS noise
+.DS_Store
+*.swp
+*~

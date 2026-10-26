@@ -1,0 +1,36 @@
+# ElektroDump systemd unit (M10).
+#
+# Install with deploy/install.sh, which also creates the elektrodump user,
+# seeds /etc/elektrodump/config.json and applies deploy/elektrodump.tmpfiles.
+#
+# The service runs from /opt/elektrodump so the relative resource paths in the
+# config (resources/calibration/..., resources/luts/..., resources/maps/...)
+# resolve. Products and the CADU spool live under storage.root
+# (/var/lib/elektrodump, created by the tmpfiles entry).
+
+[Unit]
+Description=ElektroDump ground station
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=elektrodump
+Group=elektrodump
+WorkingDirectory=/opt/elektrodump
+ExecStart=/opt/elektrodump/elektrodump run --config /etc/elektrodump/config.json
+Restart=always
+RestartSec=5
+# Resource limits (PLAN.md R10, spec 5.6): keep the daemon well behaved on a
+# 1 GB Raspberry Pi 3B+.
+Nice=-5
+LimitRTPRIO=50
+LimitNOFILE=4096
+MemoryMax=512M
+# Optional: tmpfs spool to spare the SD card (PLAN.md R10). Uncomment both
+# lines to keep the CADU spool in RAM instead of on the SD card.
+# RuntimeDirectory=elektrodump
+# Environment=ED_SPOOL_DIR=/run/elektrodump/spool
+
+[Install]
+WantedBy=multi-user.target

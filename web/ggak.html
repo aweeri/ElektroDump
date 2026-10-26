@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ElektroDump — GGAK</title>
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<header class="topbar" id="topbar"></header>
+<main>
+  <div class="card">
+    <h2>Science channels</h2>
+    <div class="toolbar">
+      <label>channel <select id="ggak-channel"></select></label>
+      <a id="ggak-csv" class="muted" href="/api/v1/ggak/csv?channel=0">download CSV</a>
+      <span class="muted" id="ggak-status"></span>
+    </div>
+    <table>
+      <thead>
+        <tr><th>channel</th><th>unit</th><th>latest</th><th>time (UTC)</th><th>samples</th></tr>
+      </thead>
+      <tbody id="ggak-rows"></tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h2>Plot</h2>
+    <img id="ggak-plot" alt="GGAK channel plot">
+  </div>
+</main>
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/ggak.js"></script>
+</body>
+</html>

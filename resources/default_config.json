@@ -1,0 +1,213 @@
+{
+  "version": 1,
+  "station": {
+    "name": "My Elektro Station",
+    "latitude": 52.0,
+    "longitude": 21.0,
+    "altitude_m": 100
+  },
+  "satellite": {
+    "id": "elektro-l3",
+    "subsatellite_lon_deg": 76.0
+  },
+  "sdr": {
+    "driver": "airspy",
+    "serial": "",
+    "gain_tenth_db": 300,
+    "bias_tee": true,
+    "ppm": 0,
+    "airspy": {
+      "lna_gain": 10,
+      "mixer_gain": 10,
+      "vga_gain": 10
+    },
+    "file_path": "",
+    "file_format": "int8",
+    "mock": {
+      "tone_offset_hz": 200000,
+      "noise_db": -30,
+      "ggak": false,
+      "lrit": false,
+      "hrit": false
+    }
+  },
+  "run": {
+    "mode": "ggak"
+  },
+  "frequencies": {
+    "ggak_hz": 1693000000,
+    "lrit_hz": 1691000000,
+    "hrit_hz": 1691000000,
+    "lo_hz": 0,
+    "ggak_if_hz": 0,
+    "lrit_if_hz": 0,
+    "hrit_if_hz": 0
+  },
+  "ggak": {
+    "sample_rate_hz": 3000000,
+    "symbol_rate": 5000,
+    "pll_bw": 0.02,
+    "rrc_alpha": 0.5,
+    "time_offset_seconds": -10800,
+    "spool_dir": "data/spool/ggak",
+    "rotate_seconds": 3600,
+    "costas_bw": 0.02,
+    "max_carrier_offset_hz": 50000,
+    "subcarrier_hz": 0,
+    "target_sps": 8,
+    "rrc_taps": 33,
+    "mock": {
+      "mod_index": 0.5,
+      "snr_db": 20.0,
+      "carrier_offset_hz": 0.0
+    }
+  },
+  "lrit": {
+    "sample_rate_hz": 1000000,
+    "symbol_rate": 294000,
+    "constellation": "bpsk",
+    "pll_bw": 0.0145,
+    "rrc_alpha": 0.5,
+    "max_sps": 3,
+    "output_dir": "data/xrit",
+    "mock": {
+      "snr_db": 20.0,
+      "carrier_phase": 0.4
+    }
+  },
+  "hrit": {
+    "sample_rate_hz": 6000000,
+    "symbol_rate": 1150000,
+    "constellation": "oqpsk",
+    "pll_bw": 0.001,
+    "rrc_alpha": 0.5,
+    "max_sps": 3,
+    "output_dir": "data/xrit",
+    "coarse_acq": true,
+    "coarse_acq_range_hz": 100000,
+    "coarse_acq_fft": 16384,
+    "mock": {
+      "snr_db": 20.0,
+      "carrier_phase": 0.4,
+      "carrier_offset_hz": 0.0
+    }
+  },
+  "decode": {
+    "cadu_bits": 8192,
+    "derandomize": true,
+    "rs_interleave": 4,
+    "rs_type": "rs223",
+    "rs_usecheck": true,
+    "rs_dualbasis": false,
+    "rrc_taps": 33,
+    "viterbi_ber_threshold": 0.3,
+    "viterbi_outsync_after": 20,
+    "max_missing_segment_ratio": 0.05
+  },
+  "calibration": {
+    "enabled": true,
+    "table": "resources/calibration/msugs_table.json"
+  },
+  "image": {
+    "channel_map": {
+      "vis_r": 0,
+      "vis_g": 1,
+      "vis_b": 2,
+      "ir": 3
+    },
+    "segment_height": 0,
+    "max_missing_segment_ratio": 0.05
+  },
+  "products": {
+    "max_output_dimension": 2048,
+    "format": "webp",
+    "webp_quality": 85,
+    "webp_method": 4,
+    "products_days": 30,
+    "queue_depth": 64,
+    "visual": {
+      "r_channel": 0,
+      "g_channel": 1,
+      "b_channel": 2,
+      "gamma": 1.0,
+      "r_min": 0.0,
+      "r_max": 1.0,
+      "g_min": 0.0,
+      "g_max": 1.0,
+      "b_min": 0.0,
+      "b_max": 1.0
+    },
+    "ir": {
+      "channel": 3,
+      "lut": "resources/luts/ir_gray.png",
+      "min_k": 190.0,
+      "max_k": 320.0
+    },
+    "ir_cloud": {
+      "channel": 3,
+      "lut": "resources/luts/ir_cloud.png",
+      "cloud_threshold_k": 250.0,
+      "cloud_softness_k": 10.0,
+      "map": "resources/maps/world_equirect.png",
+      "map_enabled": false
+    }
+  },
+  "projection": {
+    "type": "mercator",
+    "output_width": 2048,
+    "output_height": 2048
+  },
+  "schedule": {
+    "enabled": true,
+    "timezone": "UTC",
+    "default_mode": "ggak",
+    "entries": [
+      {
+        "name": "lrit-morning",
+        "start": "06:00",
+        "end": "06:20",
+        "mode": "lrit",
+        "priority": 10,
+        "frequency_hz": 0,
+        "symbol_rate": 0,
+        "sample_rate_hz": 0
+      }
+    ]
+  },
+  "scheduler": {
+    "tick_seconds": 1,
+    "janitor_seconds": 60
+  },
+  "storage": {
+    "root": "/var/lib/elektrodump",
+    "retention": {
+      "products_days": 30,
+      "ggak_days": 90,
+      "failed_cadu_hours": 24,
+      "logs_days": 14
+    },
+    "min_free_mb": 512
+  },
+  "web": {
+    "bind": "0.0.0.0",
+    "port": 8080,
+    "static_root": "web"
+  },
+  "api": {
+    "base_url": "",
+    "webhooks": []
+  },
+  "logging": {
+    "level": "info",
+    "file": "data/logs/elektrodump.log",
+    "max_size_mb": 10,
+    "rotate_count": 3
+  },
+  "performance": {
+    "sdr_thread_priority": 50,
+    "dsp_thread_priority": 40,
+    "image_thread_idle": true,
+    "fft_size": 1024,
+    "fft_rate_hz": 10
+  }
+}

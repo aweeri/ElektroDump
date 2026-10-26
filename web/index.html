@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ElektroDump — Dashboard</title>
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<header class="topbar" id="topbar"></header>
+<main>
+  <div class="grid">
+    <div class="card">
+      <h2>Latest visual</h2>
+      <img id="latest-image" alt="Latest visual product">
+      <div class="muted" id="latest-caption" style="margin-top:8px">loading…</div>
+    </div>
+    <div class="card">
+      <h2>Signal</h2>
+      <div class="big" id="dash-snr">—</div>
+      <dl class="kv">
+        <dt>lock</dt><dd id="dash-lock">—</dd>
+        <dt>BER</dt><dd id="dash-ber">—</dd>
+        <dt>CADU</dt><dd id="dash-cadus">—</dd>
+        <dt>SDR</dt><dd id="dash-sdr">—</dd>
+      </dl>
+      <h2 style="margin-top:12px">SNR (recent)</h2>
+      <canvas id="spark" width="600" height="120"></canvas>
+    </div>
+    <div class="card">
+      <h2>Station</h2>
+      <dl class="kv">
+        <dt>mode</dt><dd id="dash-mode">—</dd>
+        <dt>satellite</dt><dd id="dash-satellite">—</dd>
+        <dt>version</dt><dd id="dash-version">—</dd>
+        <dt>pipeline</dt><dd id="dash-state">—</dd>
+        <dt>next window</dt><dd id="dash-next">—</dd>
+      </dl>
+    </div>
+  </div>
+</main>
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/dashboard.js"></script>
+</body>
+</html>

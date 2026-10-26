@@ -1,0 +1,9 @@
+# ElektroDump runtime directories (M10).
+#
+# Installed to /etc/tmpfiles.d/elektrodump.conf and applied with
+# `systemd-tmpfiles --create /etc/tmpfiles.d/elektrodump.conf`.
+# The service account is created by deploy/install.sh.
+d /var/lib/elektrodump 0750 elektrodump elektrodump -
+d /var/lib/elektrodump/spool 0750 elektrodump elektrodump -
+d /var/lib/elektrodump/products 0750 elektrodump elektrodump -
+d /var/lib/elektrodump/state 0750 elektrodump elektrodump -
