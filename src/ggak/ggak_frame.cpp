@@ -214,12 +214,20 @@ void GgakFrameParser::extract(std::vector<GgakFrame>& out) {
         }
     }
 
-    // Drop consumed bits so the buffer stays bounded.
-    if (frame_start_ > 4096) {
+    // Drop consumed bits so the buffer stays bounded. Track *both* cursors: if
+    // only frame_start_ is considered, an unlocked parser that keeps failing to
+    // find an ASM never trims and the per-call rescan turns quadratic (a 4 s
+    // capture took minutes).
+    std::size_t base = search_pos_;
+    if (locked_ && frame_start_ < base) {
+        base = frame_start_;
+    }
+    if (base > 4096) {
         bits_.erase(bits_.begin(),
-                    bits_.begin() + static_cast<std::ptrdiff_t>(frame_start_));
-        frame_start_ = 0;
-        next_start_ = 0;
+                    bits_.begin() + static_cast<std::ptrdiff_t>(base));
+        search_pos_ -= base;
+        frame_start_ = frame_start_ > base ? frame_start_ - base : 0;
+        next_start_ = next_start_ > base ? next_start_ - base : 0;
     }
 }
 

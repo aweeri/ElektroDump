@@ -96,6 +96,8 @@ private:
     std::size_t ma_count_ = 0;
 
     double rms_ = 0.0;
+    double pos_lvl_ = 1.0;   // running mean of the positive BPSK lobe
+    double neg_lvl_ = -1.0;  // running mean of the negative BPSK lobe
 
     // Scratch buffers (reused across calls; no hot-path allocation).
     std::vector<std::complex<float>> pll_buf_;

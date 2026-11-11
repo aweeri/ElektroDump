@@ -68,6 +68,8 @@ void PmDemod::configure(const PmDemodConfig& cfg, uint32_t sample_rate) {
     acq_done_ = false;
     acq_offset_hz_ = 0.0;
     acq_buf_.clear();
+    pos_lvl_ = 1.0;
+    neg_lvl_ = -1.0;
     update_offset_rotator();
 
     const double subcarrier =
@@ -252,10 +254,21 @@ void PmDemod::process_block(const std::complex<float>* iq, std::size_t n,
 
     for (const std::complex<float>& sym : symbols_) {
         const double re = static_cast<double>(sym.real());
-        const double mag2 = re * re;
-        rms_ = 0.99 * rms_ + 0.01 * mag2;
-        const double scale = 100.0 / std::sqrt(rms_ + 1e-9);
-        soft_out.push_back(to_soft(re * scale));
+        rms_ = 0.99 * rms_ + 0.01 * (re * re);
+        // Track the two BPSK levels separately and slice at their midpoint.
+        // Scaling by the RMS alone leaves any DC offset in front of the slicer:
+        // on the live signal the lobes sit at +0.97 / -0.81 (midpoint +0.08),
+        // which biases the recovered bits 73/27 and stops the frame sync from
+        // ever finding an ASM even though the constellation looks clean.
+        if (re > 0.0) {
+            pos_lvl_ += 0.001 * (re - pos_lvl_);
+        } else {
+            neg_lvl_ += 0.001 * (re - neg_lvl_);
+        }
+        const double mid = 0.5 * (pos_lvl_ + neg_lvl_);
+        const double half = 0.5 * (pos_lvl_ - neg_lvl_);
+        const double scale = half > 1e-6 ? 100.0 / half : 100.0;
+        soft_out.push_back(to_soft((re - mid) * scale));
     }
 
     const double evm_snr = evm_.snr_db();
