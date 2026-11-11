@@ -13,6 +13,7 @@
 
 #include "core/pipeline.h"
 #include "dsp/demod_pm.h"
+#include "dsp/demod_psk.h"
 #include "ggak/ggak_frame.h"
 #include "ggak/ggak_store.h"
 
@@ -47,7 +48,13 @@ private:
     PipelineParams params_;
     PipelineIo io_;
 
+    // GGAK is nominally PM with a residual carrier (PmDemod). A suppressed-
+    // carrier BPSK downlink has nothing for that carrier loop to lock to, so the
+    // same frames can be recovered with the Costas-first PSK chain instead;
+    // `ggak.demod`: "pm" (default) | "psk".
     dsp::PmDemod demod_;
+    dsp::PskDemod psk_demod_;
+    bool use_psk_ = false;
     ggak::GgakFrameParser parser_;
     ggak::GgakStore store_;
 

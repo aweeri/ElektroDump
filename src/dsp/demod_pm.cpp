@@ -1,5 +1,7 @@
 #include "dsp/demod_pm.h"
 
+#include "core/logging.h"
+
 #include <algorithm>
 #include <cmath>
 #include <mutex>
@@ -55,14 +57,18 @@ void PmDemod::configure(const PmDemodConfig& cfg, uint32_t sample_rate) {
     costas_.configure(cfg_.costas_bw, 2);
     clock_.configure(decim_sps_, 64);
 
+    // BPSK: squaring collapses the modulation, so a line appears at 2x offset.
     {
-        const double d = -kTwoPi * cfg_.freq_offset_hz /
-                         static_cast<double>(sample_rate_);
-        off_delta_ = std::complex<float>(static_cast<float>(std::cos(d)),
-                                         static_cast<float>(std::sin(d)));
-        off_rot_ = std::complex<float>(1.0f, 0.0f);
-        off_count_ = 0;
+        double range = cfg_.max_carrier_offset_hz > 0.0
+                           ? cfg_.max_carrier_offset_hz
+                           : 50000.0;
+        range += std::fabs(cfg_.freq_offset_hz);
+        coarse_.configure(static_cast<double>(sample_rate_), range, 16384, 2);
     }
+    acq_done_ = false;
+    acq_offset_hz_ = 0.0;
+    acq_buf_.clear();
+    update_offset_rotator();
 
     const double subcarrier =
         cfg_.subcarrier_enabled
@@ -85,6 +91,16 @@ void PmDemod::configure(const PmDemodConfig& cfg, uint32_t sample_rate) {
     locked_.store(false, std::memory_order_relaxed);
 }
 
+void PmDemod::update_offset_rotator() {
+    // Measured on the raw stream, so it already includes the wideband shift.
+    const double total = acq_offset_hz_ != 0.0 ? acq_offset_hz_ : cfg_.freq_offset_hz;
+    const double d = -kTwoPi * total / static_cast<double>(sample_rate_);
+    off_delta_ = std::complex<float>(static_cast<float>(std::cos(d)),
+                                     static_cast<float>(std::sin(d)));
+    off_rot_ = std::complex<float>(1.0f, 0.0f);
+    off_count_ = 0;
+}
+
 void PmDemod::reset() {
     pll_.reset();
     rrc_.reset();
@@ -96,6 +112,10 @@ void PmDemod::reset() {
     rot_count_ = 0;
     off_rot_ = std::complex<float>(1.0f, 0.0f);
     off_count_ = 0;
+    acq_done_ = false;
+    acq_offset_hz_ = 0.0;
+    acq_buf_.clear();
+    coarse_.reset();
     ma_sum_ = std::complex<float>(0.0f, 0.0f);
     ma_count_ = 0;
     rms_ = 0.0;
@@ -109,11 +129,42 @@ void PmDemod::process(const std::complex<float>* iq, std::size_t n,
         return;
     }
 
+    if (!acq_done_) {
+        acq_buf_.insert(acq_buf_.end(), iq, iq + n);
+        const std::size_t need = coarse_.fft_size();
+        if (acq_buf_.size() < need) {
+            return;
+        }
+        const double offset = coarse_.estimate(acq_buf_.data(), need);
+        // Only trust a clear spectral line; otherwise leave the loop alone.
+        ED_LOG(Info, "ggak") << "coarse acq: offset " << offset
+                             << " Hz, peak ratio " << coarse_.last_peak_ratio();
+        // Not applied: on a wideband (10 MSPS) capture the squaring estimator
+        // aliases onto the front-end passband hump and returns a confident but
+        // wrong offset (measured: -610 kHz, ratio 20). Reported for diagnosis
+        // only until the estimator runs after the IF shift.
+        (void)offset;
+        acq_done_ = true;
+        process_block(acq_buf_.data(), acq_buf_.size(), soft_out);
+        acq_buf_.clear();
+        acq_buf_.shrink_to_fit();
+        return;
+    }
+
+    process_block(iq, n, soft_out);
+}
+
+void PmDemod::process_block(const std::complex<float>* iq, std::size_t n,
+                            std::vector<int8_t>& soft_out) {
+    if (iq == nullptr || n == 0) {
+        return;
+    }
+
     // Boxcar decimation to the target samples/symbol rate; before the PLL so
     // the loop bandwidth stays below the subcarrier.
     decim_buf_.clear();
     decim_buf_.reserve(n / decim_ + 1);
-    const bool shift = (cfg_.freq_offset_hz != 0.0);
+    const bool shift = (cfg_.freq_offset_hz != 0.0) || (acq_offset_hz_ != 0.0);
     for (std::size_t i = 0; i < n; ++i) {
         std::complex<float> sample = iq[i];
         if (shift) {

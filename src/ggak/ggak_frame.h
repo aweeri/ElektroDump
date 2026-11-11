@@ -16,11 +16,15 @@ inline constexpr std::size_t kGgakFrameBits = kGgakFrameBytes * 8;  // 1792
 
 struct GgakFrame {
     uint8_t raw[kGgakFrameBytes] = {0};
-    uint8_t id = 0;               // raw[4]; 48 == SKL
-    uint32_t frame_time = 0;      // raw[9..12], big-endian
+    uint8_t frame_type = 0;       // raw[4]
+    uint8_t id = 0;               // raw[9]: source_id
+    uint32_t frame_time = 0;      // raw[10..11] coarse_time, big-endian
     bool crc_ok = false;
     double timestamp_unix = 0.0;  // frame_time + TDB->UNIX + MSK offset
 };
+
+// True when raw[0..3] holds the CCSDS ASM 0x1ACFFC1D.
+bool ggak_asm_match(const uint8_t* raw);
 
 // 16-bit sum of bytes 0..221 (wraps at 16 bits, matching the reference).
 uint16_t ggak_sum_crc(const uint8_t* raw);

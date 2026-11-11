@@ -14,6 +14,7 @@
 #include "dsp/carrier_pll.h"
 #include "dsp/clock_recovery.h"
 #include "dsp/costas.h"
+#include "dsp/coarse_acq.h"
 #include "dsp/rrc_filter.h"
 #include "dsp/snr_estimator.h"
 
@@ -44,11 +45,16 @@ public:
     // Consumes IQ and appends int8 soft symbols (range -127..127).
     void process(const std::complex<float>* iq, std::size_t n,
                  std::vector<int8_t>& soft_out);
+    void process_block(const std::complex<float>* iq, std::size_t n,
+                       std::vector<int8_t>& soft_out);
+    void update_offset_rotator();
 
     double snr_db() const;
     bool locked() const;
     double freq_offset_hz() const;
     double symbol_rate() const { return cfg_.symbol_rate; }
+    // Carrier offset found by the squaring estimator (Hz), 0 until acquired.
+    double coarse_offset_hz() const { return acq_offset_hz_; }
     // Most recent symbols for the constellation plot (thread-safe copy).
     void constellation(std::vector<std::complex<float>>& out) const;
     double samples_per_symbol() const { return decim_sps_; }
@@ -64,6 +70,14 @@ private:
 
     EvmSnrEstimator evm_{2, 0.002};
     M2m4SnrEstimator m2m4_{0.001};
+
+    // Coarse carrier acquisition: a plain second-order PLL cannot pull in more
+    // than a few hundred Hz, so estimate the offset first (M-th power spectral
+    // line) and hand the loop something it can track.
+    dsp::CoarseAcquisition coarse_;
+    bool acq_done_ = false;
+    std::vector<std::complex<float>> acq_buf_;
+    double acq_offset_hz_ = 0.0;
 
     // Wideband IF shift: rotate the input down by freq_offset_hz before the
     // decimator so one capture can hold several carriers.

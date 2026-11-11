@@ -186,20 +186,22 @@ private:
         std::vector<uint8_t> frames(kFrameCount * kFrameBytes);
         for (int f = 0; f < kFrameCount; ++f) {
             uint8_t* raw = frames.data() + f * kFrameBytes;
-            raw[0] = 0xAA;
-            raw[1] = 0xAA;
-            raw[2] = 0xAA;
-            raw[3] = 0xAA;
-            raw[4] = 48;  // SKL
+            // Real CADU layout: CCSDS ASM, then the GGAK header
+            // (frame_type, master/channel counters, source_id, coarse/fine time).
+            raw[0] = 0x1A;
+            raw[1] = 0xCF;
+            raw[2] = 0xFC;
+            raw[3] = 0x1D;
+            raw[4] = 48;  // SKL frame type
             raw[5] = static_cast<uint8_t>((f >> 8) & 0xFF);
             raw[6] = static_cast<uint8_t>(f & 0xFF);
             raw[7] = 0;
             raw[8] = 0;
-            const uint32_t ts = 0x10000000u + static_cast<uint32_t>(f);
-            raw[9] = static_cast<uint8_t>((ts >> 24) & 0xFF);
-            raw[10] = static_cast<uint8_t>((ts >> 16) & 0xFF);
-            raw[11] = static_cast<uint8_t>((ts >> 8) & 0xFF);
-            raw[12] = static_cast<uint8_t>(ts & 0xFF);
+            raw[9] = 48;  // source_id: SKL
+            const uint32_t coarse = 0x1000u + static_cast<uint32_t>(f);
+            raw[10] = static_cast<uint8_t>((coarse >> 8) & 0xFF);
+            raw[11] = static_cast<uint8_t>(coarse & 0xFF);
+            raw[12] = 0;  // fine_time
             for (std::size_t i = 13; i < 222; ++i) {
                 raw[i] = static_cast<uint8_t>((i + static_cast<std::size_t>(f)) &
                                               0xFF);

@@ -17,7 +17,15 @@ uint32_t read_be32(const uint8_t* p) {
 // key in the pipeline so it can be corrected without a rebuild (PLAN.md D2).
 constexpr double kGgakTimeBase = 10957.0 * 86400.0 - 3.0 * 3600.0;
 
+// CCSDS attached sync marker that delimits a GGAK CADU (GobDump:
+// ccsds_simple_psk_decoder, cadu_size 1792 bits, ASM included).
+constexpr uint32_t kAsm = 0x1ACFFC1Du;
+
 }  // namespace
+
+bool ggak_asm_match(const uint8_t* raw) {
+    return raw != nullptr && read_be32(raw) == kAsm;
+}
 
 uint16_t ggak_sum_crc(const uint8_t* raw) {
     if (raw == nullptr) {
@@ -70,12 +78,20 @@ bool GgakFrameParser::try_frame(std::size_t start, int polarity,
         }
         out.raw[b] = value;
     }
-    if (!ggak_frame_crc_ok(out.raw)) {
+    // Real GGAK framing (GobDump/SatDump `ccsds_simple_psk_decoder`, cadu_size
+    // 1792 bits, RS off): a standard CCSDS attached sync marker delimits the
+    // frame, and the 16-bit byte sum at [222..223] is only a quality check. The
+    // sum alone matches random data about once in 65536 bit positions, which is
+    // why syncing on it produced false frames; the 32-bit ASM does not.
+    if (!ggak_asm_match(out.raw)) {
         return false;
     }
-    out.id = out.raw[4];
-    out.frame_time = read_be32(out.raw + 9);
-    out.crc_ok = true;
+    out.crc_ok = ggak_frame_crc_ok(out.raw);
+    // Header layout per GobDump's GGAKFrameHeader.
+    out.frame_type = out.raw[4];
+    out.id = out.raw[9];  // source_id
+    out.frame_time = (static_cast<uint32_t>(out.raw[10]) << 8) |
+                     static_cast<uint32_t>(out.raw[11]);  // coarse_time
     out.timestamp_unix =
         static_cast<double>(out.frame_time) + kGgakTimeBase;
     return true;

@@ -153,8 +153,10 @@ void PskDemod::process_block(const std::complex<float>* iq, std::size_t n,
     const std::complex<float>* src = iq;
     // Wideband capture: shift this mode's carrier down to DC, on top of any
     // coarse-acquisition correction.
+    // The coarse estimate is measured on the raw stream, so it already contains
+    // the wideband offset: adding both would double-count it.
     const double static_offset_hz =
-        coarse_enabled_ ? (corr_freq_hz_ + cfg_.freq_offset_hz) : cfg_.freq_offset_hz;
+        (coarse_enabled_ && acquired_) ? corr_freq_hz_ : cfg_.freq_offset_hz;
     if (static_offset_hz != 0.0) {
         corr_buf_.resize(n);
         // Rotation is exp(-j*corr_phase_); a positive offset advances phase.
