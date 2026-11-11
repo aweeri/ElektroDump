@@ -1,5 +1,8 @@
 #include "dsp/demod_pm.h"
 
+#include <cstdlib>
+#include <cstdio>
+
 #include "core/logging.h"
 
 #include <algorithm>
@@ -164,6 +167,17 @@ void PmDemod::process(const std::complex<float>* iq, std::size_t n,
 
 void PmDemod::process_block(const std::complex<float>* iq, std::size_t n,
                             std::vector<int8_t>& soft_out) {
+    // Debug hook: dump the demapped symbols so they can be compared against an
+    // independent reference chain on the same capture.
+    static FILE* sym_dump = nullptr;
+    static bool sym_dump_checked = false;
+    if (!sym_dump_checked) {
+        sym_dump_checked = true;
+        const char* path = std::getenv("ED_DUMP_SYMS");
+        if (path != nullptr) {
+            sym_dump = std::fopen(path, "wb");
+        }
+    }
     if (iq == nullptr || n == 0) {
         return;
     }
@@ -250,25 +264,28 @@ void PmDemod::process_block(const std::complex<float>* iq, std::size_t n,
             }
         }
     }
-    m2m4_.update(iq, n);
 
     for (const std::complex<float>& sym : symbols_) {
         const double re = static_cast<double>(sym.real());
         rms_ = 0.99 * rms_ + 0.01 * (re * re);
-        // Track the two BPSK levels separately and slice at their midpoint.
-        // Scaling by the RMS alone leaves any DC offset in front of the slicer:
-        // on the live signal the lobes sit at +0.97 / -0.81 (midpoint +0.08),
-        // which biases the recovered bits 73/27 and stops the frame sync from
-        // ever finding an ASM even though the constellation looks clean.
-        if (re > 0.0) {
-            pos_lvl_ += 0.001 * (re - pos_lvl_);
+        // Normalise to unit RMS first, then track the two BPSK levels and slice
+        // at their midpoint. Tracking raw levels is unstable here: the rail is
+        // ~0.01 in raw units, so a tracker initialised at +-1.0 sits far off the
+        // eye for thousands of symbols and biases the bits (measured 12% ones,
+        // no ASM) even though the constellation looks clean.
+        const double norm = re / (std::sqrt(rms_) + 1e-9);
+        if (norm > 0.0) {
+            pos_lvl_ += 0.001 * (norm - pos_lvl_);
         } else {
-            neg_lvl_ += 0.001 * (re - neg_lvl_);
+            neg_lvl_ += 0.001 * (norm - neg_lvl_);
         }
         const double mid = 0.5 * (pos_lvl_ + neg_lvl_);
         const double half = 0.5 * (pos_lvl_ - neg_lvl_);
-        const double scale = half > 1e-6 ? 100.0 / half : 100.0;
-        soft_out.push_back(to_soft((re - mid) * scale));
+        const double scale = (half > 1e-6 ? 1.0 / half : 1.0) * 100.0;
+        soft_out.push_back(to_soft((norm - mid) * scale));
+        if (sym_dump != nullptr) {
+            std::fputc(soft_out.back() + 128, sym_dump);
+        }
     }
 
     const double evm_snr = evm_.snr_db();

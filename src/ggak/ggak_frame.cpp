@@ -134,12 +134,22 @@ void GgakFrameParser::extract(std::vector<GgakFrame>& out) {
         }
         if (!locked_) {
             // Acquire on the 32-bit ASM, both polarities, at every bit offset.
+            // The window is carried incrementally: recomputing 32 bits at every
+            // position is 32x the work per bit, which on a Pi keeps the DSP
+            // thread from ever catching up with the radio.
             bool found = false;
+            uint32_t window = 0;
+            std::size_t filled = 0;
             while (bits_.size() >= search_pos_ + kGgakFrameBits) {
-                for (int polarity = 0; polarity < 2 && !found; ++polarity) {
-                    if (ggak_asm_at(bits_, search_pos_, polarity)) {
+                window = (window << 1) | bits_[search_pos_ + 31];
+                if (++filled >= 32) {
+                    if (window == kAsm) {
                         cand_start_ = search_pos_;
-                        cand_polarity_ = polarity;
+                        cand_polarity_ = 0;
+                        found = true;
+                    } else if ((~window) == kAsm) {
+                        cand_start_ = search_pos_;
+                        cand_polarity_ = 1;
                         found = true;
                     }
                 }

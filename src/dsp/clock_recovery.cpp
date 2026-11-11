@@ -47,14 +47,22 @@ void SymbolTimingRecovery::process(const std::complex<float>* in, std::size_t n,
         ++block_samples_;
 
         if (block_samples_ >= block_len) {
-            // Pick the phase with the largest mean eye opening.
+            // Pick the phase with the largest mean eye opening, but only move if
+            // the new phase is markedly better. Re-picking on every block makes
+            // the sampling instant jump every 64 symbols, which drops or repeats
+            // symbols and destroys the frame sync (the constellation still looks
+            // fine because every phase samples a valid-looking level).
             std::size_t best = 0;
             for (std::size_t k = 1; k < eye_.size(); ++k) {
                 if (eye_[k] > eye_[best]) {
                     best = k;
                 }
             }
-            phase_ = static_cast<int>(best);
+            const std::size_t current = static_cast<std::size_t>(phase_);
+            const bool better = eye_[best] > eye_[current] * 1.10;
+            if (current >= eye_.size() || better) {
+                phase_ = static_cast<int>(best);
+            }
             std::fill(eye_.begin(), eye_.end(), 0.0);
             block_samples_ = 0;
         }
