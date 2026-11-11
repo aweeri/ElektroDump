@@ -37,10 +37,14 @@
   // and the range is smoothed across frames so the picture does not pump.
   function updateRange(bins) {
     const sorted = Array.from(bins).sort(function (a, b) { return a - b; });
-    let nextLo = percentile(sorted, 0.10);
-    let nextHi = percentile(sorted, 0.995);
-    const minSpan = 24;
-    if (nextHi - nextLo < minSpan) { nextHi = nextLo + minSpan; }
+    const noise = percentile(sorted, 0.50);
+    const nextHi = percentile(sorted, 0.995);
+    // Place the noise floor a third of the way up: with lo = noise - m*span the
+    // floor sits at m/(m+1) of the height, so m = 0.5 puts it at ~33% instead of
+    // the 50% a percentile-only floor gives.
+    const topSpan = Math.max(nextHi - noise, 6);
+    let nextLo = noise - 0.5 * topSpan;
+    if (nextHi - nextLo < 24) { nextLo = nextHi - 24; }
     if (lo === null || hi === null) {
       lo = nextLo;
       hi = nextHi;
