@@ -6,6 +6,7 @@
 #pragma once
 
 #include <atomic>
+#include <mutex>
 #include <complex>
 #include <cstddef>
 #include <cstdint>
@@ -50,6 +51,8 @@ public:
     double snr_db() const;
     bool locked() const;
     double symbol_rate() const { return cfg_.symbol_rate; }
+    // Most recent symbols for the constellation plot (thread-safe copy).
+    void constellation(std::vector<std::complex<float>>& out) const;
     double samples_per_symbol() const { return sps_; }
 
     // Coarse carrier estimate in Hz (0 until acquisition has run).
@@ -88,6 +91,11 @@ private:
     std::vector<std::complex<float>> align_buf_;
     std::vector<std::complex<float>> costas_buf_;
     std::vector<std::complex<float>> symbols_;
+
+    mutable std::mutex sym_mutex_;
+    std::vector<std::complex<float>> sym_ring_;
+    std::size_t sym_pos_ = 0;
+    std::size_t sym_count_ = 0;
 
     std::atomic<double> snr_db_{0.0};
     std::atomic<double> carrier_offset_hz_{0.0};

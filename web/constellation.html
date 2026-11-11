@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ElektroDump — Constellation</title>
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<header class="topbar" id="topbar"></header>
+<main>
+  <div class="grid">
+    <div class="card">
+      <h2>Constellation</h2>
+      <canvas id="constellation" width="520" height="520"></canvas>
+      <div class="muted" id="const-legend" style="margin-top:8px">waiting for symbols…</div>
+    </div>
+    <div class="card">
+      <h2>Symbols</h2>
+      <div class="kv"><span>points</span><span id="const-count">—</span></div>
+      <div class="kv"><span>RMS</span><span id="const-rms">—</span></div>
+      <div class="kv"><span>SNR</span><span id="const-snr">—</span></div>
+      <div class="kv"><span>lock</span><span id="const-lock">—</span></div>
+      <div class="kv"><span>BER</span><span id="const-ber">—</span></div>
+      <div class="kv"><span>mode</span><span id="const-mode">—</span></div>
+      <div class="muted" style="margin-top:12px">
+        Every dot is one demodulated symbol, scaled by the symbol RMS.
+        A locked PSK/Pm-BPSK link shows a tight cloud on the axis: two lobes for
+        BPSK, four for OQPSK. A ring means the carrier loop is not tracking, a
+        fuzzy blob means the symbol timing is off.
+      </div>
+    </div>
+  </div>
+</main>
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/constellation.js"></script>
+</body>
+</html>

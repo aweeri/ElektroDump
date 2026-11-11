@@ -5,6 +5,7 @@
 #pragma once
 
 #include <atomic>
+#include <mutex>
 #include <complex>
 #include <cstddef>
 #include <cstdint>
@@ -45,6 +46,8 @@ public:
     bool locked() const;
     double freq_offset_hz() const;
     double symbol_rate() const { return cfg_.symbol_rate; }
+    // Most recent symbols for the constellation plot (thread-safe copy).
+    void constellation(std::vector<std::complex<float>>& out) const;
     double samples_per_symbol() const { return decim_sps_; }
 
 private:
@@ -78,6 +81,12 @@ private:
     std::vector<std::complex<float>> rrc_buf_;
     std::vector<std::complex<float>> costas_buf_;
     std::vector<std::complex<float>> symbols_;
+
+    // Rolling window of demodulated symbols for the web constellation view.
+    mutable std::mutex sym_mutex_;
+    std::vector<std::complex<float>> sym_ring_;
+    std::size_t sym_pos_ = 0;
+    std::size_t sym_count_ = 0;
 
     std::atomic<double> snr_db_{0.0};
     std::atomic<bool> locked_{false};

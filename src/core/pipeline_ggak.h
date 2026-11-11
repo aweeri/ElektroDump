@@ -32,6 +32,7 @@ public:
     void start() override;
     void stop() override;
     PipelineStats stats() const override;
+    void constellation(std::vector<std::complex<float>>& out) const override;
 
     // Diagnostics for the offline path / tests.
     double snr_db() const { return snr_db_.load(std::memory_order_relaxed); }

@@ -171,6 +171,10 @@ void GgakPipeline::publish_stats() {
     }
 }
 
+void GgakPipeline::constellation(std::vector<std::complex<float>>& out) const {
+    demod_.constellation(out);
+}
+
 PipelineStats GgakPipeline::stats() const {
     PipelineStats s;
     s.running = running_.load(std::memory_order_relaxed);

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <mutex>
 
 namespace ed::dsp {
 
@@ -148,6 +149,23 @@ void PmDemod::process(const std::complex<float>* iq, std::size_t n,
     }
 
     evm_.update(symbols_.data(), symbols_.size());
+
+    {
+        constexpr std::size_t kKeep = 8192;
+        std::lock_guard<std::mutex> lock(sym_mutex_);
+        if (sym_ring_.size() != kKeep) {
+            sym_ring_.assign(kKeep, std::complex<float>(0.0f, 0.0f));
+            sym_pos_ = 0;
+            sym_count_ = 0;
+        }
+        for (const std::complex<float>& sym : symbols_) {
+            sym_ring_[sym_pos_] = sym;
+            sym_pos_ = (sym_pos_ + 1) % kKeep;
+            if (sym_count_ < kKeep) {
+                ++sym_count_;
+            }
+        }
+    }
     m2m4_.update(iq, n);
 
     for (const std::complex<float>& sym : symbols_) {
@@ -165,6 +183,20 @@ void PmDemod::process(const std::complex<float>* iq, std::size_t n,
     snr_db_.store(snr, std::memory_order_relaxed);
     locked_.store(snr > 3.0 && evm_.samples() >= 64,
                   std::memory_order_relaxed);
+}
+
+void PmDemod::constellation(std::vector<std::complex<float>>& out) const {
+    std::lock_guard<std::mutex> lock(sym_mutex_);
+    out.clear();
+    if (sym_count_ == 0) {
+        return;
+    }
+    const std::size_t cap = sym_ring_.size();
+    const std::size_t start = (sym_pos_ + cap - sym_count_) % cap;
+    out.reserve(sym_count_);
+    for (std::size_t i = 0; i < sym_count_; ++i) {
+        out.push_back(sym_ring_[(start + i) % cap]);
+    }
 }
 
 double PmDemod::snr_db() const {

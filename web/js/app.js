@@ -9,7 +9,8 @@ ED.pages = [
   { key: 'schedule', href: '/schedule', label: 'Schedule' },
   { key: 'ggak', href: '/ggak', label: 'GGAK' },
   { key: 'system', href: '/system', label: 'System' },
-  { key: 'waterfall', href: '/waterfall', label: 'Waterfall' }
+  { key: 'waterfall', href: '/waterfall', label: 'Waterfall' },
+  { key: 'constellation', href: '/constellation', label: 'Constellation' }
 ];
 
 ED.esc = function (value) {

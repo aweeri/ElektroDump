@@ -201,6 +201,10 @@ void XritPipeline::publish_stats() {
     }
 }
 
+void XritPipeline::constellation(std::vector<std::complex<float>>& out) const {
+    demod_.constellation(out);
+}
+
 PipelineStats XritPipeline::stats() const {
     PipelineStats s;
     s.running = running_.load(std::memory_order_relaxed);

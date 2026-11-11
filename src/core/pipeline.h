@@ -4,6 +4,7 @@
 #include <complex>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "core/ring_buffer.h"
 
@@ -75,6 +76,10 @@ public:
     virtual void start() = 0;
     virtual void stop() = 0;
     virtual PipelineStats stats() const = 0;
+    // Most recent demodulated symbols (empty when the mode has none yet).
+    virtual void constellation(std::vector<std::complex<float>>& out) const {
+        out.clear();
+    }
 };
 
 }  // namespace ed

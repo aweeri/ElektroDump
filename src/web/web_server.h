@@ -5,6 +5,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <complex>
 #include <functional>
 #include <string>
 
@@ -47,6 +48,8 @@ struct WebContext {
     scheduler::CaduLifecycle* cadu = nullptr;
     // Thread-safe accessor for the live pipeline (set by App).
     std::function<PipelineSnapshot()> pipeline_snapshot;
+    // Thread-safe copy of the live demodulator's symbol cloud (set by App).
+    std::function<void(std::vector<std::complex<float>>&)> constellation;
     std::string satellite = "elektro-l3";
     std::string mode = "ggak";
     std::string sdr_error;
@@ -79,6 +82,7 @@ private:
 // Endpoint groups (each in its own translation unit).
 void register_status_api(Router& router, const WebContext& ctx);
 void register_fft_api(Router& router, const WebContext& ctx);
+void register_constellation_api(Router& router, const WebContext& ctx);
 void register_products_api(Router& router, const WebContext& ctx);
 void register_schedule_api(Router& router, const WebContext& ctx);
 void register_ggak_api(Router& router, const WebContext& ctx);

@@ -458,6 +458,14 @@ int App::run_loop(bool with_sdr) {
     ctx.cadu = cadu_.get();
     ctx.ggak = ggak_science_.get();
     ctx.webhook = webhook_.get();
+    ctx.constellation = [this](std::vector<std::complex<float>>& out) {
+        std::lock_guard<std::mutex> lock(pipeline_mutex_);
+        if (pipeline_ != nullptr) {
+            pipeline_->constellation(out);
+        } else {
+            out.clear();
+        }
+    };
     ctx.pipeline_snapshot = [this]() -> web::PipelineSnapshot {
         std::lock_guard<std::mutex> lock(pipeline_mutex_);
         web::PipelineSnapshot snap;
