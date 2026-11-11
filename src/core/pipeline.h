@@ -45,7 +45,12 @@ struct PipelineParams {
 
 struct PipelineStats {
     bool running = false;
+    // Frame lock (demodulator tracking *and* valid frames arriving).
     bool locked = false;
+    // Demodulator tracking on its own: symbols are usable even when the frame
+    // layer has not found anything yet. Conflating the two makes a working
+    // demod look dead whenever the framing does not match.
+    bool demod_locked = false;
     double ber = 0.0;
     double snr_db = 0.0;
     uint64_t cadus_total = 0;

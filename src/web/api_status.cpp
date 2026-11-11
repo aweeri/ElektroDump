@@ -167,6 +167,7 @@ json::Value pipeline_json(const WebContext& ctx) {
     const PipelineStats ps = pipeline_stats(ctx, present);
     pipeline.set("state", json::Value(ps.running ? "running" : "idle"));
     pipeline.set("locked", json::Value(ps.locked));
+    pipeline.set("demod_locked", json::Value(ps.demod_locked));
     pipeline.set("ber", json::Value(ps.ber));
     pipeline.set("snr_db", json::Value(ps.snr_db));
     pipeline.set("cadus_total",
@@ -183,6 +184,7 @@ json::Value pipeline_json(const WebContext& ctx) {
             pipeline.set("snr_db", json::Value(m.snr_db));
             pipeline.set("ber", json::Value(m.ber));
             pipeline.set("locked", json::Value(m.locked));
+        pipeline.set("demod_locked", json::Value(m.locked));
         }
     }
     return pipeline;

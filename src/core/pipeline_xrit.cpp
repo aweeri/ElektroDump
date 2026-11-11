@@ -209,6 +209,7 @@ PipelineStats XritPipeline::stats() const {
     PipelineStats s;
     s.running = running_.load(std::memory_order_relaxed);
     s.locked = locked_.load(std::memory_order_relaxed);
+    s.demod_locked = demod_.locked();
     s.ber = ber_.load(std::memory_order_relaxed);
     s.snr_db = snr_db_.load(std::memory_order_relaxed);
     s.cadus_total = cadus_total_.load(std::memory_order_relaxed);
