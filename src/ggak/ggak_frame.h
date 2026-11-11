@@ -26,6 +26,9 @@ struct GgakFrame {
 // True when raw[0..3] holds the CCSDS ASM 0x1ACFFC1D.
 bool ggak_asm_match(const uint8_t* raw);
 
+// True when the bit buffer holds the ASM at `pos` (optionally inverted).
+bool ggak_asm_at(const std::vector<uint8_t>& bits, std::size_t pos, int polarity);
+
 // 16-bit sum of bytes 0..221 (wraps at 16 bits, matching the reference).
 uint16_t ggak_sum_crc(const uint8_t* raw);
 
@@ -52,7 +55,9 @@ private:
 
     std::vector<uint8_t> bits_;
     std::size_t search_pos_ = 0;   // next acquisition start position
-    std::size_t frame_start_ = 0;  // next frame start once locked
+    std::size_t frame_start_ = 0;
+    std::size_t next_start_ = 0;
+    std::size_t find_next_asm(std::size_t from, int polarity) const;  // next frame start once locked
     // A single 16-bit byte-sum matches random data roughly once every 65536 bit
     // positions, so a lone match is not evidence of a frame: a candidate start
     // must be confirmed by consecutive matches before anything is emitted.

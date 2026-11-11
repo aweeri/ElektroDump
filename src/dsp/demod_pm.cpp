@@ -136,14 +136,20 @@ void PmDemod::process(const std::complex<float>* iq, std::size_t n,
             return;
         }
         const double offset = coarse_.estimate(acq_buf_.data(), need);
-        // Only trust a clear spectral line; otherwise leave the loop alone.
+        const double ratio = coarse_.last_peak_ratio();
         ED_LOG(Info, "ggak") << "coarse acq: offset " << offset
-                             << " Hz, peak ratio " << coarse_.last_peak_ratio();
-        // Not applied: on a wideband (10 MSPS) capture the squaring estimator
-        // aliases onto the front-end passband hump and returns a confident but
-        // wrong offset (measured: -610 kHz, ratio 20). Reported for diagnosis
-        // only until the estimator runs after the IF shift.
-        (void)offset;
+                             << " Hz, peak ratio " << ratio;
+        // Apply the estimate only when the spectral line is unambiguous. On a
+        // wideband (10 MSPS) capture the squaring estimator aliases onto the
+        // front-end passband hump and reports a confident but wrong offset
+        // (measured: -610 kHz at ratio 20, -164 kHz at ratio 7.6), so a low
+        // ratio must leave the loop alone. A real carrier gives ratios in the
+        // hundreds or thousands.
+        if (ratio > 50.0 && std::fabs(offset) > 1.0) {
+            acq_offset_hz_ = offset;
+            update_offset_rotator();
+            ED_LOG(Info, "ggak") << "coarse acq: applied " << offset << " Hz";
+        }
         acq_done_ = true;
         process_block(acq_buf_.data(), acq_buf_.size(), soft_out);
         acq_buf_.clear();

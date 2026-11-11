@@ -68,7 +68,7 @@ bool GgakPipeline::configure(const Config& cfg, const PipelineParams& params) {
         pcfg.max_sps = demod_cfg.target_sps;
         pcfg.rrc_taps = demod_cfg.rrc_taps;
         pcfg.freq_offset_hz = demod_cfg.freq_offset_hz;
-        pcfg.coarse_acq = true;
+        pcfg.coarse_acq = cfg.get_bool("ggak.coarse_acq", false);
         pcfg.coarse_acq_range_hz = std::fabs(demod_cfg.freq_offset_hz) + 100000.0;
         pcfg.coarse_acq_fft = 16384;
         psk_demod_.configure(pcfg, sample_rate);
