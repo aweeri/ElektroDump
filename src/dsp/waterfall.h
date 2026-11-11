@@ -32,8 +32,10 @@ public:
     WaterfallProducer(const WaterfallProducer&) = delete;
     WaterfallProducer& operator=(const WaterfallProducer&) = delete;
 
+    // `average` FFT blocks are power-averaged into each emitted row; one raw
+    // block per row is too noisy to read (each bin varies by several dB).
     void configure(std::size_t fft_size, int rate_hz, uint32_t sample_rate_hz,
-                   uint64_t center_hz);
+                   uint64_t center_hz, int average = 8);
 
     // Start consuming from `ring` (owned by the caller, must outlive this).
     void start(SpscRing<std::complex<float>>* ring);
@@ -51,6 +53,7 @@ public:
     std::vector<SpectrumFrame> rows(std::size_t max_rows) const;
 
     std::size_t fft_size() const { return fft_size_; }
+    int average() const { return average_; }
     int rate_hz() const { return rate_hz_; }
     uint64_t frames() const { return frames_.load(std::memory_order_relaxed); }
     bool running() const { return running_.load(std::memory_order_relaxed); }
@@ -66,6 +69,7 @@ private:
 
     std::size_t fft_size_ = 1024;
     int rate_hz_ = 10;
+    int average_ = 8;
     std::atomic<uint32_t> sample_rate_hz_{1000000};
     std::atomic<uint64_t> center_hz_{0};
     std::atomic<uint64_t> frames_{0};

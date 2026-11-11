@@ -414,7 +414,9 @@ int App::run_loop(bool with_sdr) {
             const int fft_rate =
                 static_cast<int>(config_.get_int("performance.fft_rate_hz", 10));
             waterfall_.configure(fft_size, fft_rate, scfg.sample_rate_hz,
-                                 scfg.center_freq_hz);
+                                 scfg.center_freq_hz,
+                                 static_cast<int>(config_.get_int(
+                                     "performance.fft_average", 8)));
             // The waterfall consumes the fan-out ring, not the primary IQ ring.
             waterfall_.start(&waterfall_ring_);
 

@@ -31,16 +31,19 @@ WaterfallProducer::WaterfallProducer() = default;
 WaterfallProducer::~WaterfallProducer() { stop(); }
 
 void WaterfallProducer::configure(std::size_t fft_size, int rate_hz,
-                                  uint32_t sample_rate_hz, uint64_t center_hz) {
+                                  uint32_t sample_rate_hz, uint64_t center_hz,
+                                  int average) {
     fft_size_ = fft_size < 16 ? 16 : fft_size;
     rate_hz_ = rate_hz < 1 ? 1 : rate_hz;
+    average_ = average < 1 ? 1 : (average > 64 ? 64 : average);
     sample_rate_hz_.store(sample_rate_hz, std::memory_order_relaxed);
     center_hz_.store(center_hz, std::memory_order_relaxed);
 
     fft_ = std::make_unique<Fft>(fft_size_);
     window_ = make_hann(fft_size_);
     windowed_.assign(fft_size_, std::complex<float>(0.0f, 0.0f));
-    block_.assign(fft_size_, std::complex<float>(0.0f, 0.0f));
+    block_.assign(fft_size_ * static_cast<std::size_t>(average_),
+                  std::complex<float>(0.0f, 0.0f));
 }
 
 void WaterfallProducer::start(SpscRing<std::complex<float>>* ring) {
@@ -69,8 +72,10 @@ void WaterfallProducer::loop() {
     thread::set_nice(5);
 
     const auto period = std::chrono::microseconds(1000000 / rate_hz_);
-    std::vector<std::complex<float>> tmp(fft_size_);
+    const std::size_t span = fft_size_ * static_cast<std::size_t>(average_);
+    std::vector<std::complex<float>> tmp(span);
     std::vector<float> bins(fft_size_);
+    std::vector<double> power(fft_size_, 0.0);
 
     while (running_.load(std::memory_order_relaxed)) {
         const auto t0 = std::chrono::steady_clock::now();
@@ -80,13 +85,13 @@ void WaterfallProducer::loop() {
         std::size_t r = 0;
         while (ring_ != nullptr &&
                (r = ring_->read(tmp.data(), tmp.size())) > 0) {
-            if (r >= fft_size_) {
-                std::copy(tmp.begin() + (r - fft_size_), tmp.begin() + r,
+            if (r >= span) {
+                std::copy(tmp.begin() + (r - span), tmp.begin() + r,
                           block_.begin());
-                have = fft_size_;
+                have = span;
             } else {
-                if (have + r > fft_size_) {
-                    const std::size_t drop = have + r - fft_size_;
+                if (have + r > span) {
+                    const std::size_t drop = have + r - span;
                     std::memmove(block_.data(), block_.data() + drop,
                                  (have - drop) * sizeof(std::complex<float>));
                     have -= drop;
@@ -97,10 +102,26 @@ void WaterfallProducer::loop() {
         }
 
         if (have >= fft_size_ && fft_ != nullptr) {
-            for (std::size_t i = 0; i < fft_size_; ++i) {
-                windowed_[i] = block_[i] * window_[i];
+            // Power-average the newest `average_` blocks: averaging in dB would
+            // bias the result low and keep the spikiness.
+            const std::size_t blocks = have / fft_size_;
+            std::fill(power.begin(), power.end(), 0.0);
+            for (std::size_t b = 0; b < blocks; ++b) {
+                const std::complex<float>* src =
+                    block_.data() + b * fft_size_ +
+                    (have - blocks * fft_size_);
+                for (std::size_t i = 0; i < fft_size_; ++i) {
+                    windowed_[i] = src[i] * window_[i];
+                }
+                fft_->power_db(windowed_.data(), bins.data());
+                for (std::size_t i = 0; i < fft_size_; ++i) {
+                    power[i] += std::pow(10.0, static_cast<double>(bins[i]) / 10.0);
+                }
             }
-            fft_->power_db(windowed_.data(), bins.data());
+            const double inv = 1.0 / static_cast<double>(blocks);
+            for (std::size_t i = 0; i < fft_size_; ++i) {
+                bins[i] = static_cast<float>(10.0 * std::log10(power[i] * inv));
+            }
 
             SpectrumFrame frame;
             frame.bins_db = bins;
