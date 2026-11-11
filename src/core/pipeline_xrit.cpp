@@ -35,6 +35,7 @@ bool XritPipeline::configure(const Config& cfg, const PipelineParams& params) {
 
     dsp::DemodConfig demod_cfg;
     demod_cfg.constellation = dsp::constellation_from_string(params.constellation);
+    demod_cfg.freq_offset_hz = params.freq_offset_hz;
     demod_cfg.symbol_rate = params.symbol_rate > 0.0
                                 ? params.symbol_rate
                                 : cfg.get_double(std::string(section) + ".symbol_rate",

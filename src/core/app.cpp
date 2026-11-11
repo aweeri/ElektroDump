@@ -118,6 +118,20 @@ sdr::SdrConfig App::sdr_config() const {
     cfg.mock_ggak_carrier_offset_hz =
         config_.get_double("ggak.mock.carrier_offset_hz", 0.0);
 
+    // Wideband capture: hold the radio at one fixed centre/rate so a single
+    // capture serves every downlink; each pipeline shifts its own carrier down
+    // digitally (see PipelineParams::freq_offset_hz).
+    const long long wideband_hz = config_.get_int("sdr.wideband_hz", 0);
+    if (wideband_hz > 0) {
+        cfg.center_freq_hz = static_cast<uint64_t>(
+            config_.get_int("sdr.wideband_center_hz", 1692000000));
+        cfg.sample_rate_hz = static_cast<uint32_t>(wideband_hz);
+        cfg.mock_ggak = config_.get_bool("sdr.mock.ggak", false);
+        cfg.mock_lrit = config_.get_bool("sdr.mock.lrit", false);
+        cfg.mock_hrit = config_.get_bool("sdr.mock.hrit", false);
+        return cfg;
+    }
+
     if (mode_ == PipelineMode::GGAK) {
         cfg.center_freq_hz = static_cast<uint64_t>(
             config_.get_int("frequencies.ggak_hz", 1693000000));
@@ -241,6 +255,13 @@ void App::start_pipeline(PipelineMode mode,
     if (sdr_ != nullptr && active_sample_rate_hz_ != 0) {
         params.sample_rate_hz = active_sample_rate_hz_;
     }
+    // Where the carrier sits relative to the radio's centre: zero when the SDR
+    // was retuned to it, non-zero for a shared wideband capture.
+    if (sdr_ != nullptr) {
+        params.freq_offset_hz =
+            static_cast<double>(params.center_freq_hz) -
+            static_cast<double>(sdr_->center_freq_hz());
+    }
 
     if (mode == PipelineMode::GGAK) {
         pipeline_ = std::make_unique<GgakPipeline>();
@@ -287,7 +308,8 @@ void App::switch_mode(PipelineMode mode,
                       const scheduler::ScheduleEntry* entry) {
     uint64_t freq = 0;
     uint32_t wanted_rate = 0;
-    if (sdr_ != nullptr) {
+    const bool wideband = config_.get_int("sdr.wideband_hz", 0) > 0;
+    if (sdr_ != nullptr && !wideband) {
         if (entry != nullptr && entry->frequency_hz != 0) {
             freq = entry->frequency_hz;
         } else {

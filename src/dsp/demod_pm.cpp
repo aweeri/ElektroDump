@@ -55,6 +55,15 @@ void PmDemod::configure(const PmDemodConfig& cfg, uint32_t sample_rate) {
     costas_.configure(cfg_.costas_bw, 2);
     clock_.configure(decim_sps_, 64);
 
+    {
+        const double d = -kTwoPi * cfg_.freq_offset_hz /
+                         static_cast<double>(sample_rate_);
+        off_delta_ = std::complex<float>(static_cast<float>(std::cos(d)),
+                                         static_cast<float>(std::sin(d)));
+        off_rot_ = std::complex<float>(1.0f, 0.0f);
+        off_count_ = 0;
+    }
+
     const double subcarrier =
         cfg_.subcarrier_enabled
             ? ((cfg_.subcarrier_hz > 0.0) ? cfg_.subcarrier_hz
@@ -85,6 +94,8 @@ void PmDemod::reset() {
     m2m4_.reset();
     rot_ = std::complex<float>(1.0f, 0.0f);
     rot_count_ = 0;
+    off_rot_ = std::complex<float>(1.0f, 0.0f);
+    off_count_ = 0;
     ma_sum_ = std::complex<float>(0.0f, 0.0f);
     ma_count_ = 0;
     rms_ = 0.0;
@@ -102,8 +113,22 @@ void PmDemod::process(const std::complex<float>* iq, std::size_t n,
     // the loop bandwidth stays below the subcarrier.
     decim_buf_.clear();
     decim_buf_.reserve(n / decim_ + 1);
+    const bool shift = (cfg_.freq_offset_hz != 0.0);
     for (std::size_t i = 0; i < n; ++i) {
-        ma_sum_ += iq[i];
+        std::complex<float> sample = iq[i];
+        if (shift) {
+            sample *= off_rot_;
+            off_rot_ *= off_delta_;
+            if ((++off_count_ & 0x3FFu) == 0) {
+                const float mag = std::abs(off_rot_);
+                if (mag > 1e-6f) {
+                    off_rot_ /= mag;
+                } else {
+                    off_rot_ = std::complex<float>(1.0f, 0.0f);
+                }
+            }
+        }
+        ma_sum_ += sample;
         if (++ma_count_ >= decim_) {
             decim_buf_.push_back(ma_sum_ / static_cast<float>(decim_));
             ma_sum_ = std::complex<float>(0.0f, 0.0f);

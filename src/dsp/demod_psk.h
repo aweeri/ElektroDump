@@ -32,6 +32,9 @@ struct DemodConfig {
     int max_sps = 3;
     int rrc_taps = 33;
 
+    // Digital offset between the radio centre and this mode's carrier.
+    double freq_offset_hz = 0.0;
+
     // When enabled the demod buffers the first `coarse_acq_fft` samples,
     // estimates the offset and removes it before the Costas loop.
     bool coarse_acq = false;
@@ -96,6 +99,13 @@ private:
     std::vector<std::complex<float>> sym_ring_;
     std::size_t sym_pos_ = 0;
     std::size_t sym_count_ = 0;
+
+    // Input decimation to the configured samples/symbol.
+    std::size_t decim_ = 1;
+    double dec_rate_ = 0.0;
+    std::complex<float> dec_sum_{0.0f, 0.0f};
+    std::size_t dec_count_ = 0;
+    std::vector<std::complex<float>> dec_buf_;
 
     std::atomic<double> snr_db_{0.0};
     std::atomic<double> carrier_offset_hz_{0.0};

@@ -42,7 +42,23 @@ void PskDemod::configure(const DemodConfig& cfg, uint32_t sample_rate) {
         cfg_.rrc_taps = 33;
     }
 
-    sps_ = static_cast<double>(sample_rate_) / cfg_.symbol_rate;
+    // A wideband capture delivers far more samples per symbol than the
+    // demodulator wants (10 MSPS on a 294 kbaud LRIT carrier is sps 34, and the
+    // RRC filter alone then costs more than a Pi 4 core). Decimate to the
+    // configured samples/symbol first; the boxcar doubles as the anti-alias.
+    const int target_sps = cfg_.max_sps >= 2 ? cfg_.max_sps : 3;
+    if (cfg_.symbol_rate > 0.0) {
+        const double want = static_cast<double>(sample_rate_) /
+                            (static_cast<double>(target_sps) * cfg_.symbol_rate);
+        decim_ = static_cast<std::size_t>(std::max(1.0, std::round(want)));
+    } else {
+        decim_ = 1;
+    }
+    dec_sum_ = std::complex<float>(0.0f, 0.0f);
+    dec_count_ = 0;
+    dec_rate_ = static_cast<double>(sample_rate_) / static_cast<double>(decim_);
+
+    sps_ = dec_rate_ / cfg_.symbol_rate;
     if (!(sps_ > 1.0)) {
         sps_ = 2.0;
     }
@@ -68,6 +84,8 @@ void PskDemod::configure(const DemodConfig& cfg, uint32_t sample_rate) {
                           static_cast<std::size_t>(cfg_.coarse_acq_fft), order);
     }
     acquired_ = false;
+    dec_sum_ = std::complex<float>(0.0f, 0.0f);
+    dec_count_ = 0;
     corr_freq_hz_ = 0.0;
     corr_phase_ = 0.0;
     acq_buf_.clear();
@@ -133,27 +151,56 @@ void PskDemod::process(const std::complex<float>* iq, std::size_t n,
 void PskDemod::process_block(const std::complex<float>* iq, std::size_t n,
                              std::vector<int8_t>& soft_out) {
     const std::complex<float>* src = iq;
-    if (coarse_enabled_ && corr_freq_hz_ != 0.0) {
+    // Wideband capture: shift this mode's carrier down to DC, on top of any
+    // coarse-acquisition correction.
+    const double static_offset_hz =
+        coarse_enabled_ ? (corr_freq_hz_ + cfg_.freq_offset_hz) : cfg_.freq_offset_hz;
+    if (static_offset_hz != 0.0) {
         corr_buf_.resize(n);
         // Rotation is exp(-j*corr_phase_); a positive offset advances phase.
+        // Recursive rotation: one sin/cos per block instead of two per sample,
+        // which is the difference between 10 MSPS fitting and not on a Pi.
         const double dphi =
-            kTwoPi * corr_freq_hz_ / static_cast<double>(sample_rate_);
+            kTwoPi * static_offset_hz / static_cast<double>(sample_rate_);
+        std::complex<float> rot(static_cast<float>(std::cos(corr_phase_)),
+                                static_cast<float>(-std::sin(corr_phase_)));
+        const std::complex<float> delta(static_cast<float>(std::cos(dphi)),
+                                        static_cast<float>(-std::sin(dphi)));
         for (std::size_t i = 0; i < n; ++i) {
-            const double c = std::cos(corr_phase_);
-            const double s = std::sin(corr_phase_);
-            const double re = static_cast<double>(iq[i].real());
-            const double im = static_cast<double>(iq[i].imag());
-            corr_buf_[i] = std::complex<float>(
-                static_cast<float>(re * c + im * s),
-                static_cast<float>(im * c - re * s));
-            corr_phase_ += dphi;
-            if (corr_phase_ > kPi) {
-                corr_phase_ -= kTwoPi;
-            } else if (corr_phase_ < -kPi) {
-                corr_phase_ += kTwoPi;
+            corr_buf_[i] = iq[i] * rot;
+            rot *= delta;
+            if ((i & 0x3FFu) == 0) {
+                const float mag = std::abs(rot);
+                if (mag > 1e-6f) {
+                    rot /= mag;
+                } else {
+                    rot = std::complex<float>(1.0f, 0.0f);
+                }
             }
         }
+        corr_phase_ += dphi * static_cast<double>(n);
+        while (corr_phase_ > kPi) {
+            corr_phase_ -= kTwoPi;
+        }
+        while (corr_phase_ < -kPi) {
+            corr_phase_ += kTwoPi;
+        }
         src = corr_buf_.data();
+    }
+
+    if (decim_ > 1) {
+        dec_buf_.clear();
+        dec_buf_.reserve(n / decim_ + 2);
+        for (std::size_t i = 0; i < n; ++i) {
+            dec_sum_ += src[i];
+            if (++dec_count_ >= decim_) {
+                dec_buf_.push_back(dec_sum_ / static_cast<float>(decim_));
+                dec_sum_ = std::complex<float>(0.0f, 0.0f);
+                dec_count_ = 0;
+            }
+        }
+        src = dec_buf_.data();
+        n = dec_buf_.size();
     }
 
     rrc_buf_.resize(n);

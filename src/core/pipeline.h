@@ -29,6 +29,9 @@ const char* pipeline_mode_name(PipelineMode mode);
 struct PipelineParams {
     PipelineMode mode = PipelineMode::GGAK;
     uint64_t center_freq_hz = 0;
+    // Offset between the radio's centre and center_freq_hz, used when one
+    // wideband capture serves several downlinks (0 = carrier at DC).
+    double freq_offset_hz = 0.0;
     uint32_t sample_rate_hz = 0;
     double symbol_rate = 0.0;
     std::string constellation;  // "bpsk" | "oqpsk" | "pm"

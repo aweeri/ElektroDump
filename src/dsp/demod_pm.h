@@ -25,6 +25,9 @@ struct PmDemodConfig {
     double pll_bw = 0.02;
     double costas_bw = 0.02;
     double max_carrier_offset_hz = 50000.0;
+    // Digital offset between the radio's centre and this mode's carrier; used
+    // when one wideband capture serves several downlinks.
+    double freq_offset_hz = 0.0;
     double subcarrier_hz = 0.0;  // 0 => use symbol_rate
     // Plain BPSK links have no subcarrier; without this switch `subcarrier_hz`
     // has no way to say "none" because 0 already means "use symbol_rate".
@@ -61,6 +64,12 @@ private:
 
     EvmSnrEstimator evm_{2, 0.002};
     M2m4SnrEstimator m2m4_{0.001};
+
+    // Wideband IF shift: rotate the input down by freq_offset_hz before the
+    // decimator so one capture can hold several carriers.
+    std::complex<float> off_rot_{1.0f, 0.0f};
+    std::complex<float> off_delta_{1.0f, 0.0f};
+    std::size_t off_count_ = 0;
 
     // PM-to-BPSK subcarrier derotation (recursive complex rotation).
     std::complex<float> rot_{1.0f, 0.0f};
