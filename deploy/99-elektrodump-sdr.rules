@@ -1,0 +1,18 @@
+# ElektroDump — SDR device permissions for a headless (system service) install.
+#
+# The Airspy and RTL-SDR packages ship udev rules that tag the device with
+# TAG+="uaccess", which only grants access to the *logged-in seat* user. A
+# daemon running as a system service has no seat, so without this rule the
+# process cannot open the radio: `elektrodump probe` lists no device and the
+# service fails with "airspy_open failed (device busy or absent)".
+#
+# This rule makes both devices readable/writable by the plugdev group instead.
+# deploy/install.sh installs it and adds the service account to plugdev.
+
+# Airspy (R0/R2/Mini)
+SUBSYSTEM=="usb", ATTR{idVendor}=="1d50", ATTR{idProduct}=="60a1", \
+    GROUP="plugdev", MODE="0660", SYMLINK+="airspy-%k"
+
+# RTL-SDR (RTL2832U / RTL2838 generic)
+SUBSYSTEM=="usb", ATTR{idVendor}=="0bda", ATTR{idProduct}=="2838", \
+    GROUP="plugdev", MODE="0660", SYMLINK+="rtlsdr-%k"

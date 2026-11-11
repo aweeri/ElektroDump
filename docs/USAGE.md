@@ -219,7 +219,7 @@ config OK (embedded defaults)
 | `sdr` | `driver` (`rtlsdr`\|`airspy`\|`mock`\|`file`), `serial`, `gain_tenth_db`, `bias_tee`, `ppm`, `airspy{lna_gain,mixer_gain,vga_gain}`, `file_path`, `file_format`, `mock{...}` | Radio selection and gain. |
 | `run.mode` | `ggak`\|`lrit`\|`hrit` | Active pipeline at startup (scheduler can switch it). |
 | `frequencies` | `ggak_hz`, `lrit_hz`, `hrit_hz`, `lo_hz`, `*_if_hz` | Downlink center frequencies. |
-| `ggak` | `sample_rate_hz`, `symbol_rate`, `pll_bw`, `rrc_alpha`, `costas_bw`, `spool_dir`, `rotate_seconds`, `time_offset_seconds`, `mock{...}` | GGAK demod/spool. |
+| `ggak` | `sample_rate_hz`, `symbol_rate`, `pll_bw`, `rrc_alpha`, `costas_bw`, `subcarrier_hz`, `subcarrier_enabled`, `spool_dir`, `rotate_seconds`, `time_offset_seconds`, `mock{...}` | GGAK demod/spool. |
 | `lrit` | `sample_rate_hz`, `symbol_rate`, `constellation`, `pll_bw`, `rrc_alpha`, `max_sps`, `output_dir`, `mock{...}` | LRIT demod/output. |
 | `hrit` | same as `lrit` plus `coarse_acq`, `coarse_acq_range_hz`, `coarse_acq_fft` | HRIT OQPSK demod/output. |
 | `decode` | `cadu_bits`, `derandomize`, `rs_interleave`, `rs_type`, `rs_usecheck`, `rs_dualbasis`, `viterbi_ber_threshold`, `viterbi_outsync_after`, `max_missing_segment_ratio` | FEC/xRIT chain. |
@@ -450,6 +450,32 @@ utc,id,crc_ok,frame_time
 2008-07-03T18:24:20Z,48,1,268435460
 ```
 
+### GGAK demodulation parameters
+
+`ggak.subcarrier_hz` is the PM subcarrier derotated after the carrier loop; `0`
+keeps the historical meaning "use `ggak.symbol_rate`". A **plain BPSK** link has
+no subcarrier and has to say so explicitly, because `0` is already taken:
+
+```json
+{ "ggak": { "symbol_rate": 8000, "subcarrier_enabled": false } }
+```
+
+`ggak.pll_bw` is the carrier-loop bandwidth as a fraction of the *decimated*
+sample rate. Decimation targets `ggak.target_sps` samples/symbol, so a 5 kbaud
+signal at 3 MSPS decimates to 40 kHz and `pll_bw: 0.02` is an 800 Hz loop.
+Very small values acquire slowly on a weak signal: a 6 s synthetic capture at
+9 dB SNR recovered 15 of 17 frames at `pll_bw` 0.02 and 0.05 but only 2 at 0.005.
+
+### Frame sync is confirmed, not single-shot
+
+A GGAK frame is validated by a 16-bit **sum** of bytes 0..221, which random data
+satisfies about once every 65 536 bit positions. Since acquisition slides one
+bit at a time in both polarities, one match is not evidence of a frame: the
+parser requires three consecutive matches at the same start before declaring
+lock and only emits frames once confirmed. Without that check a signal-free
+3 MSPS capture produced 2-10 "valid" frames per 30 s; with it, zero, while a
+genuine 9 dB SNR capture still yields every frame.
+
 **Live GGAK endpoints:** the running daemon serves the in-memory science store
 at `/api/v1/ggak`, `/api/v1/ggak/plots`, `/api/v1/ggak/csv?channel=N` and
 `/api/v1/ggak/plots/N.svg`. Real capture:
@@ -635,9 +661,10 @@ systemctl status elektrodump
 journalctl -u elektrodump -f
 ```
 
-> Because of the [shutdown issue](#known-issues), a `systemctl stop` will only
-> complete after systemd's `TimeoutStopSec` (default 90 s) escalates to
-> SIGKILL. Consider adding `TimeoutStopSec=5` to the unit until it is fixed.
+> SIGTERM was re-verified on a Raspberry Pi 4B: the daemon logs `stop requested;
+> shutting down` then `shutdown complete` and exits in well under a second, web
+> server included. If a stop does hang on another host, capture the thread
+> stacks before reaching for `TimeoutStopSec=5`.
 
 ---
 
@@ -697,17 +724,6 @@ exit 0.
 
 ### Known issues
 
-- **Daemon does not exit on Ctrl-C / SIGTERM** (reproducible). After a stop
-  signal the daemon logs `stop requested; shutting down` then `shutdown
-  complete`, but the process stays alive with **two threads blocked in futex
-  waits** and must be killed with `kill -9`. Cause: a lost-wakeup in the async
-  logger — [`Logger::worker_loop()`](../src/core/logging.cpp:111) never signals
-  `cv_` after draining the queue, while
-  [`Logger::flush()`](../src/core/logging.cpp:77) waits on `cv_` for an empty
-  queue and [`App::shutdown()`](../src/core/app.cpp:545) calls `flush()`. Not
-  fixed here (no source changes): workaround is `kill -9`, or set
-  `TimeoutStopSec=5` in the systemd unit.
-
 - **`decode` summary mode label.** Decoding `.cadu` without `--mode` prints
   `decode (ggak)` (the raw `run.mode`) even though the LRIT/xRIT path is used,
   and the `viterbi …` line is only meaningful for IQ input. Cosmetic.
@@ -728,9 +744,33 @@ exit 0.
 ### "No SDR detected"
 
 `probe` shows only `mock`/`file`, or `Backends: rtlsdr=no`. Check the dev
-library was present at build time (`make config` → `rtlsdr=1`), the device is
-plugged in, and permissions allow it (udev rules for RTL-SDR; do not run as
-root). `probe` works without a config file.
+library was present at build time (`make config` -> `rtlsdr=1`), the device is
+plugged in, and permissions allow it. `probe` works without a config file.
+
+### The device is plugged in but `probe` lists no radio
+
+The `libairspy`/`librtlsdr` udev rules only tag the device with
+`TAG+="uaccess"`, which grants access to the **logged-in seat user**. A systemd
+system service has no seat, so `User=elektrodump` cannot open the radio and the
+daemon logs `airspy_open failed (device busy or absent)`.
+
+`deploy/install.sh` handles this: it installs
+[`deploy/99-elektrodump-sdr.rules`](../deploy/99-elektrodump-sdr.rules), which
+makes the nodes group-owned by `plugdev` with mode `0660`, and adds the service
+account to `plugdev` (`SupplementaryGroups=plugdev` in the unit). For a manual
+install, do the same by hand:
+
+```sh
+sudo install -m 0644 deploy/99-elektrodump-sdr.rules /etc/udev/rules.d/
+sudo usermod -a -G plugdev elektrodump
+sudo udevadm control --reload-rules && sudo udevadm trigger --action=add
+ls -l /dev/bus/usb/*/   # the node should now be root:plugdev 0660
+```
+
+Re-running `udevadm trigger` matters even without a custom rule: a node that was
+enumerated before the `libairspy` package rules landed keeps its original
+`root:root 0664` ownership, so a non-root user cannot open the device until it is
+re-triggered or re-plugged.
 
 ### Config validation errors
 
