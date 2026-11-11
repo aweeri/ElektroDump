@@ -237,6 +237,11 @@ void App::start_pipeline(PipelineMode mode,
         }
     }
 
+    // The device's real rate wins: a backend may have quantised the request.
+    if (sdr_ != nullptr && active_sample_rate_hz_ != 0) {
+        params.sample_rate_hz = active_sample_rate_hz_;
+    }
+
     if (mode == PipelineMode::GGAK) {
         pipeline_ = std::make_unique<GgakPipeline>();
     } else {
@@ -280,8 +285,9 @@ void App::start_pipeline(PipelineMode mode,
 
 void App::switch_mode(PipelineMode mode,
                       const scheduler::ScheduleEntry* entry) {
+    uint64_t freq = 0;
+    uint32_t wanted_rate = 0;
     if (sdr_ != nullptr) {
-        uint64_t freq = 0;
         if (entry != nullptr && entry->frequency_hz != 0) {
             freq = entry->frequency_hz;
         } else {
@@ -292,8 +298,37 @@ void App::switch_mode(PipelineMode mode,
                                          : "frequencies.lrit_hz");
             freq = static_cast<uint64_t>(config_.get_int(key, 0));
         }
+        if (entry != nullptr && entry->sample_rate_hz != 0) {
+            wanted_rate = entry->sample_rate_hz;
+        } else {
+            const char* sec = mode == PipelineMode::GGAK
+                                  ? "ggak"
+                                  : (mode == PipelineMode::HRIT ? "hrit" : "lrit");
+            const long long def = mode == PipelineMode::GGAK
+                                      ? 3000000LL
+                                      : (mode == PipelineMode::HRIT ? 6000000LL
+                                                                    : 1000000LL);
+            wanted_rate = static_cast<uint32_t>(
+                config_.get_int(std::string(sec) + ".sample_rate_hz", def));
+        }
         if (freq != 0) {
             sdr_->retune(freq);
+        }
+        // Every mode has its own sample rate (GGAK 3, LRIT 1, HRIT 6 MSPS). The
+        // device may only offer a coarser set, so trust the rate it reports and
+        // configure the pipeline with that, not with the request.
+        if (wanted_rate != 0 && wanted_rate != sdr_->sample_rate_hz()) {
+            if (!sdr_->set_sample_rate(wanted_rate)) {
+                ED_LOG(Warn, "sdr")
+                    << "could not set " << wanted_rate << " sps for mode "
+                    << pipeline_mode_name(mode) << ": " << sdr_->stats().last_error
+                    << " (staying at " << sdr_->sample_rate_hz() << " sps)";
+            }
+        }
+        active_sample_rate_hz_ = sdr_->sample_rate_hz();
+        waterfall_.set_sample_rate(active_sample_rate_hz_);
+        if (freq != 0) {
+            waterfall_.set_center(freq);
         }
     }
     start_pipeline(mode, entry);
@@ -351,6 +386,7 @@ int App::run_loop(bool with_sdr) {
             ED_LOG(Error, "sdr") << sdr_error_;
             sdr_.reset();
         } else {
+            active_sample_rate_hz_ = sdr_->sample_rate_hz();
             const std::size_t fft_size = static_cast<std::size_t>(
                 config_.get_int("performance.fft_size", 1024));
             const int fft_rate =

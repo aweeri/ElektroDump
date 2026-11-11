@@ -102,6 +102,43 @@ public:
         }
     }
 
+    bool set_sample_rate(uint32_t rate_hz) override {
+        if (dev_ == nullptr) {
+            return false;
+        }
+        // The Airspy only accepts 3/6/10 MSPS: pick the nearest supported rate
+        // at or above the request (e.g. LRIT's 1 MSPS runs at 3 MSPS).
+        uint32_t chosen = kSampleRates[sizeof(kSampleRates) /
+                                        sizeof(kSampleRates[0]) - 1];
+        for (uint32_t candidate : kSampleRates) {
+            if (rate_hz <= candidate) {
+                chosen = candidate;
+                break;
+            }
+        }
+        const bool was_running = running_.exchange(false, std::memory_order_relaxed);
+        if (was_running) {
+            airspy_stop_rx(dev_);
+        }
+        bool ok = airspy_set_samplerate(dev_, chosen) == AIRSPY_SUCCESS;
+        if (ok) {
+            rate_.store(chosen, std::memory_order_relaxed);
+            cfg_.sample_rate_hz = chosen;
+        } else {
+            last_error_ = "airspy_set_samplerate failed";
+        }
+        if (was_running) {
+            running_.store(true, std::memory_order_relaxed);
+            if (airspy_start_rx(dev_, &AirspySource::trampoline, this) !=
+                AIRSPY_SUCCESS) {
+                running_.store(false, std::memory_order_relaxed);
+                last_error_ = "airspy_start_rx failed after rate change";
+                ok = false;
+            }
+        }
+        return ok;
+    }
+
     bool retune(uint64_t freq_hz) override {
         if (dev_ == nullptr) {
             return false;

@@ -60,6 +60,19 @@ public:
         return true;
     }
 
+    // The synthetic generator captures the sample rate when its loop starts, so
+    // a live change would desynchronise the stream from the reported rate.
+    // Refuse it rather than lie; a restart applies the new rate.
+    bool set_sample_rate(uint32_t rate_hz) override {
+        if (running_.load(std::memory_order_relaxed)) {
+            last_error_ = "mock backend cannot change sample rate while running";
+            return false;
+        }
+        rate_.store(rate_hz, std::memory_order_relaxed);
+        cfg_.sample_rate_hz = rate_hz;
+        return true;
+    }
+
     bool set_gain(int tenth_db) override {
         gain_.store(tenth_db, std::memory_order_relaxed);
         return true;
