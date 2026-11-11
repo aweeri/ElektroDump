@@ -44,6 +44,10 @@ void GgakFrameParser::reset() {
     bits_.clear();
     search_pos_ = 0;
     frame_start_ = 0;
+    cand_start_ = 0;
+    cand_polarity_ = 0;
+    cand_frames_ = 0;
+    cand_buf_.clear();
     locked_ = false;
     offset_ = 0;
     polarity_ = 0;
@@ -80,37 +84,75 @@ bool GgakFrameParser::try_frame(std::size_t start, int polarity,
 void GgakFrameParser::extract(std::vector<GgakFrame>& out) {
     if (!locked_) {
         // Acquisition: slide over the bit stream trying both polarities at every
-        // start position. The sum-CRC is the only sync criterion, so the frame
-        // start offset cannot be assumed.
-        while (bits_.size() >= search_pos_ + kGgakFrameBits) {
-            for (int polarity = 0; polarity < 2; ++polarity) {
-                GgakFrame frame;
-                if (try_frame(search_pos_, polarity, frame)) {
-                    locked_ = true;
-                    offset_ = static_cast<int>(search_pos_ % 8);
-                    polarity_ = polarity;
-                    frame_start_ = search_pos_ + kGgakFrameBits;
-                    fail_count_ = 0;
-                    ++frames_total_;
-                    out.push_back(frame);
-                    break;
+        // start position, but treat a sum-CRC match as a *candidate* only. The
+        // 16-bit sum passes ~1 in 65536 random positions, so a frame is emitted
+        // only after kConfirmFrames consecutive matches at the same start.
+        while (!locked_) {
+            if (cand_frames_ == 0) {
+                bool found = false;
+                while (bits_.size() >= search_pos_ + kGgakFrameBits) {
+                    for (int polarity = 0; polarity < 2; ++polarity) {
+                        GgakFrame frame;
+                        if (try_frame(search_pos_, polarity, frame)) {
+                            cand_start_ = search_pos_;
+                            cand_polarity_ = polarity;
+                            cand_frames_ = 1;
+                            cand_buf_.clear();
+                            cand_buf_.push_back(frame);
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found) {
+                        break;
+                    }
+                    ++search_pos_;
+                }
+                if (!found) {
+                    // Drop bits that can no longer start a frame.
+                    if (search_pos_ > 4096) {
+                        bits_.erase(bits_.begin(),
+                                    bits_.begin() +
+                                        static_cast<std::ptrdiff_t>(search_pos_));
+                        search_pos_ = 0;
+                    }
+                    return;
                 }
             }
-            if (locked_) {
-                break;
-            }
-            ++search_pos_;
-        }
 
-        if (!locked_) {
-            // Drop bits that can no longer start a frame.
-            if (search_pos_ > 4096) {
-                bits_.erase(bits_.begin(),
-                            bits_.begin() +
-                                static_cast<std::ptrdiff_t>(search_pos_));
-                search_pos_ = 0;
+            // Confirm the candidate with consecutive frames.
+            while (cand_frames_ < kConfirmFrames) {
+                const std::size_t pos =
+                    cand_start_ + cand_frames_ * kGgakFrameBits;
+                if (bits_.size() < pos + kGgakFrameBits) {
+                    return;  // wait for more bits
+                }
+                GgakFrame frame;
+                if (!try_frame(pos, cand_polarity_, frame)) {
+                    // Not a real frame start: resume sliding just past it.
+                    search_pos_ = cand_start_ + 1;
+                    cand_frames_ = 0;
+                    cand_buf_.clear();
+                    break;
+                }
+                cand_buf_.push_back(frame);
+                ++cand_frames_;
             }
-            return;
+            if (cand_frames_ < kConfirmFrames) {
+                continue;  // candidate rejected, go back to sliding
+            }
+
+            locked_ = true;
+            offset_ = static_cast<int>(cand_start_ % 8);
+            polarity_ = cand_polarity_;
+            frame_start_ = cand_start_ + cand_frames_ * kGgakFrameBits;
+            fail_count_ = 0;
+            for (const GgakFrame& frame : cand_buf_) {
+                ++frames_total_;
+                out.push_back(frame);
+            }
+            cand_buf_.clear();
+            cand_frames_ = 0;
         }
     }
 

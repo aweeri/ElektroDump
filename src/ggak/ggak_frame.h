@@ -49,6 +49,14 @@ private:
     std::vector<uint8_t> bits_;
     std::size_t search_pos_ = 0;   // next acquisition start position
     std::size_t frame_start_ = 0;  // next frame start once locked
+    // A single 16-bit byte-sum matches random data roughly once every 65536 bit
+    // positions, so a lone match is not evidence of a frame: a candidate start
+    // must be confirmed by consecutive matches before anything is emitted.
+    static constexpr std::size_t kConfirmFrames = 3;
+    std::size_t cand_start_ = 0;
+    int cand_polarity_ = 0;
+    std::size_t cand_frames_ = 0;
+    std::vector<GgakFrame> cand_buf_;  // candidates awaiting confirmation
     bool locked_ = false;
     int offset_ = 0;
     int polarity_ = 0;
