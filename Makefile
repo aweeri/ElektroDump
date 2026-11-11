@@ -30,6 +30,7 @@ CROSS      ?=
 CXX        := $(CROSS)g++
 CC         := $(CROSS)gcc
 PKG_CONFIG ?= pkg-config
+NODE       ?= node
 
 # --- optional dependencies -------------------------------------------------
 RTLSDR_CFLAGS := $(shell $(PKG_CONFIG) --cflags librtlsdr 2>/dev/null)
@@ -154,7 +155,7 @@ WEB_FILES    := $(shell find $(WEB_DIR) -type f 2>/dev/null)
 EMBED_WEB    ?= 1
 
 # --- targets ---------------------------------------------------------------
-.PHONY: all release debug test smoke clean config install deploy-pi deploy-pi-cross
+.PHONY: all release debug test smoke clean config install deploy-pi deploy-pi-cross check-web
 
 all: $(BIN)
 
@@ -188,9 +189,23 @@ $(WEB_INC): $(WEB_FILES) $(WEB_GEN)
 $(BUILD_DIR):
 	@mkdir -p $@
 
-test: $(TEST_BINS)
+test: check-web $(TEST_BINS)
 	@echo "Running self-tests..."
 	@for t in $(TEST_BINS); do echo "--- $$t"; $$t || exit 1; done
+
+# The web UI is embedded into the binary at build time, so a broken script is
+# only visible in a browser. A SyntaxError in one shared file (web/js/app.js)
+# leaves every page blank while the daemon looks healthy. Parse-check the JS
+# when node is available.
+WEB_JS     := $(shell ls $(WEB_DIR)/js/*.js 2>/dev/null)
+check-web:
+	@if command -v $(NODE) >/dev/null 2>&1; then \
+		for f in $(WEB_JS); do \
+			echo "--- syntax $$f"; $(NODE) --check $$f || exit 1; \
+		done; \
+	else \
+		echo "--- skipping JS syntax check (no $(NODE))"; \
+	fi
 
 smoke: $(BIN)
 	@for s in $(TEST_DIR)/m2_smoke.sh $(TEST_DIR)/m3_smoke.sh $(TEST_DIR)/m4_smoke.sh $(TEST_DIR)/m5_smoke.sh $(TEST_DIR)/m6_smoke.sh $(TEST_DIR)/m7_smoke.sh $(TEST_DIR)/m8_smoke.sh $(TEST_DIR)/m9_smoke.sh $(TEST_DIR)/m10_smoke.sh; do \

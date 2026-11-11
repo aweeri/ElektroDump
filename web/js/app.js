@@ -14,9 +14,14 @@ ED.pages = [
 
 ED.esc = function (value) {
   const text = value === null || value === undefined ? '' : String(value);
-  return text.replace(/[&<>"']/g, function (ch) {
-    return { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[ch];
-  });
+  const entities = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  };
+  return text.replace(/[&<>"']/g, function (ch) { return entities[ch]; });
 };
 
 ED.fmt = function (value, digits) {
