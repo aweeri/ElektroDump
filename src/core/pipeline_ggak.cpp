@@ -47,6 +47,8 @@ bool GgakPipeline::configure(const Config& cfg, const PipelineParams& params) {
     demod_cfg.max_carrier_offset_hz =
         cfg.get_double("ggak.max_carrier_offset_hz", 50000.0);
     demod_cfg.subcarrier_hz = cfg.get_double("ggak.subcarrier_hz", 0.0);
+    demod_cfg.subcarrier_enabled =
+        cfg.get_bool("ggak.subcarrier_enabled", true);
     demod_cfg.target_sps =
         static_cast<int>(cfg.get_int("ggak.target_sps", 8));
     demod_cfg.rrc_taps = static_cast<int>(cfg.get_int("ggak.rrc_taps", 33));

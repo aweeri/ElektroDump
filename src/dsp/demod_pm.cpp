@@ -55,7 +55,10 @@ void PmDemod::configure(const PmDemodConfig& cfg, uint32_t sample_rate) {
     clock_.configure(decim_sps_, 64);
 
     const double subcarrier =
-        (cfg_.subcarrier_hz > 0.0) ? cfg_.subcarrier_hz : cfg_.symbol_rate;
+        cfg_.subcarrier_enabled
+            ? ((cfg_.subcarrier_hz > 0.0) ? cfg_.subcarrier_hz
+                                          : cfg_.symbol_rate)
+            : 0.0;
     const double delta = -kTwoPi * subcarrier / decim_rate;
     rot_delta_ = std::complex<float>(static_cast<float>(std::cos(delta)),
                                      static_cast<float>(std::sin(delta)));

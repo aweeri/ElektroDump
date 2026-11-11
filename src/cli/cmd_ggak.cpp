@@ -127,6 +127,8 @@ void decode_iq_file(const std::string& path, bool is_cu8,
     dcfg.max_carrier_offset_hz =
         cfg.get_double("ggak.max_carrier_offset_hz", 50000.0);
     dcfg.subcarrier_hz = cfg.get_double("ggak.subcarrier_hz", 0.0);
+    dcfg.subcarrier_enabled =
+        cfg.get_bool("ggak.subcarrier_enabled", true);
     dcfg.target_sps = static_cast<int>(cfg.get_int("ggak.target_sps", 8));
     dcfg.rrc_taps = static_cast<int>(cfg.get_int("ggak.rrc_taps", 33));
 

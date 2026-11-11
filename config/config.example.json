@@ -54,6 +54,7 @@
     "costas_bw": 0.02,
     "max_carrier_offset_hz": 50000,
     "subcarrier_hz": 0,
+    "subcarrier_enabled": true,
     "target_sps": 8,
     "rrc_taps": 33,
     "mock": {

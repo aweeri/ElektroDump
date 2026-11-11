@@ -25,6 +25,9 @@ struct PmDemodConfig {
     double costas_bw = 0.02;
     double max_carrier_offset_hz = 50000.0;
     double subcarrier_hz = 0.0;  // 0 => use symbol_rate
+    // Plain BPSK links have no subcarrier; without this switch `subcarrier_hz`
+    // has no way to say "none" because 0 already means "use symbol_rate".
+    bool subcarrier_enabled = true;
     int target_sps = 8;
     int rrc_taps = 33;
 };
