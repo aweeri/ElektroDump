@@ -39,7 +39,15 @@
     setText('dash-state', pipeline.state || '—');
     setText('dash-snr', ED.fmt(pipeline.snr_db, 2) + ' dB');
     setText('dash-ber', pipeline.locked ? ED.fmt(pipeline.ber, 6) : '—');
-    setText('dash-lock', pipeline.locked ? 'locked' : 'no lock');
+    const lockState = pipeline.locked
+      ? 'synced'
+      : (pipeline.demod_locked ? 'syncing' : 'nosync');
+    const lockNode = document.getElementById('dash-lock');
+    if (lockNode) {
+      lockNode.innerHTML = '<span class="lock ' + lockState + '">' +
+        { synced: 'synced', syncing: 'syncing', nosync: 'not synced' }[lockState] +
+        '</span>';
+    }
     setText('dash-cadus', String(pipeline.cadus_total || 0) + ' (' +
       String(pipeline.cadus_bad || 0) + ' bad)');
     const sdr = status.sdr || {};

@@ -73,6 +73,14 @@ nav.pages a.active { background: var(--panel-2); color: var(--accent); }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
 .dot.on { background: var(--ok); }
 .dot.off { background: var(--error); }
+/* SatDump-style sync state: red = no sync, amber = syncing, green = synced. */
+.dot.synced { background: var(--ok); }
+.dot.syncing { background: var(--warn); }
+.dot.nosync { background: var(--error); }
+.lock { font-weight: 600; }
+.lock.synced { color: var(--ok); }
+.lock.syncing { color: var(--warn); }
+.lock.nosync { color: var(--error); }
 
 main { padding: 16px; display: grid; gap: 16px; max-width: 1200px; margin: 0 auto; }
 

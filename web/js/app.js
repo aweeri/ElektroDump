@@ -82,8 +82,9 @@ ED.setPage = function (key) {
   header.innerHTML =
     '<h1>Elektro<span>Dump</span></h1>' + nav +
     '<div class="status-pill">' +
-    '<span><span class="dot" id="pill-dot"></span> ' +
+    '<span><span class="dot nosync" id="pill-dot"></span> ' +
     '<span id="pill-mode">…</span></span>' +
+    '<span id="pill-lock" class="lock nosync">not synced</span>' +
     '<span id="pill-snr">SNR —</span>' +
     '<span id="pill-uptime">up —</span>' +
     '</div>';
@@ -98,9 +99,24 @@ ED.applyStatus = function (status) {
   setText('pill-mode', status.mode || '—');
   setText('pill-snr', 'SNR ' + ED.fmt(pipeline.snr_db, 1) + ' dB');
   setText('pill-uptime', 'up ' + ED.fmtDuration(status.uptime_seconds));
+  // Sync state, SatDump style: red = not synced, amber = syncing (demodulator
+  // tracking but no frames yet), green = synced (frames arriving).
+  const lockState = pipeline.locked
+    ? 'synced'
+    : (pipeline.demod_locked ? 'syncing' : 'nosync');
+  const lockText = {
+    synced: 'synced',
+    syncing: 'syncing',
+    nosync: 'not synced',
+  }[lockState];
   const dot = document.getElementById('pill-dot');
   if (dot) {
-    dot.className = 'dot ' + (pipeline.locked ? 'on' : 'off');
+    dot.className = 'dot ' + lockState;
+  }
+  const lockNode = document.getElementById('pill-lock');
+  if (lockNode) {
+    lockNode.textContent = lockText;
+    lockNode.className = 'lock ' + lockState;
   }
 };
 
