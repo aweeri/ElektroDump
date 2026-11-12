@@ -30,13 +30,13 @@
     ctx.clearRect(0, 0, w, h);
     // Graticule in the same hairline ink as every rule in the UI, so the plot
     // reads as instrument glass rather than a chart with its own palette.
-    ctx.strokeStyle = 'rgba(231,223,208,0.16)';
+    ctx.strokeStyle = 'rgba(20,23,26,0.38)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(Math.round(w / 2) + 0.5, 0); ctx.lineTo(Math.round(w / 2) + 0.5, h);
     ctx.moveTo(0, Math.round(h / 2) + 0.5); ctx.lineTo(w, Math.round(h / 2) + 0.5);
     ctx.stroke();
-    ctx.strokeStyle = 'rgba(231,223,208,0.08)';
+    ctx.strokeStyle = 'rgba(20,23,26,0.16)';
     for (const r of [0.5, 1.0]) {
       ctx.beginPath();
       ctx.arc(w / 2, h / 2, r * (w / 2 - 10) / 1.5, 0, Math.PI * 2);

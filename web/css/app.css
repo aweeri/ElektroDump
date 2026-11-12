@@ -30,19 +30,20 @@
 }
 
 :root {
-  color-scheme: dark;
-  --bg: #14120e;
-  --panel: #1b1813;
-  --panel-2: #232019;
-  --rule: #2f2a21;
-  --rule-soft: #262219;
-  --fg: #e7dfd0;
-  --muted: #948a78;
-  --accent: #5f9ea3;
-  --accent-dim: #3f6b6f;
-  --ok: #7fa86a;
-  --warn: #cfa14a;
-  --error: #bf6151;
+  color-scheme: light;
+  /* Paper: white ground, ink type, grey rules, one petrol accent. */
+  --bg: #ffffff;
+  --panel: #ffffff;
+  --panel-2: #f5f6f6;
+  --rule: #dbdfe1;
+  --rule-soft: #ecedee;
+  --fg: #14171a;
+  --muted: #6b7280;
+  --accent: #1c6469;
+  --accent-dim: #a7c3c6;
+  --ok: #2f7a3f;
+  --warn: #8a5f00;
+  --error: #b0392c;
   --mono: "Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --sans: "Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
@@ -167,7 +168,7 @@ main {
 }
 
 .card h2.inline { border: 0; padding: 0; margin: 22px 0 10px; }
-.card img { max-width: 100%; display: block; background: #0d0b08; border: 1px solid var(--rule-soft); }
+.card img { max-width: 100%; display: block; background: var(--panel-2); border: 1px solid var(--rule-soft); }
 
 /* --- readouts ------------------------------------------------------------ */
 
@@ -231,6 +232,8 @@ main {
    rewritten for device pixels. Reading it back as the layout height makes the
    element grow on every redraw. */
 #spark { height: 88px; }
+/* The waterfall's own floor colour, so an idle band still reads as a band. */
+#waterfall { background: #e8ecee; }
 
 canvas {
   width: 100%;
@@ -301,8 +304,8 @@ input, select, button {
 input:focus, select:focus, button:focus { outline: 1px solid var(--accent-dim); outline-offset: 1px; }
 button { cursor: pointer; }
 button:hover { border-color: var(--accent-dim); color: var(--fg); }
-button.primary { background: #1d2f30; border-color: var(--accent-dim); color: var(--fg); }
-button.danger { background: #2e1c19; border-color: #6a3a33; }
+button.primary { background: #e8f1f1; border-color: var(--accent); color: var(--accent); }
+button.danger { background: #fbeeec; border-color: #e0b7b0; color: var(--error); }
 /* Row actions are words, not buttons. The colour carries the warning. */
 table button.danger {
   background: transparent;
@@ -310,7 +313,7 @@ table button.danger {
   color: var(--muted);
   padding: 4px 0;
 }
-table button.danger:hover { color: var(--error); border-color: transparent; }
+table button.danger:hover { color: var(--error); border-color: transparent; background: transparent; }
 
 .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .row > label { color: var(--muted); font: 400 11px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
@@ -338,7 +341,7 @@ table button.danger:hover { color: var(--error); border-color: transparent; }
   overflow: hidden;
 }
 .thumb:hover { border-color: var(--accent-dim); }
-.thumb img { width: 100%; height: 150px; object-fit: cover; background: #0d0b08; }
+.thumb img { width: 100%; height: 150px; object-fit: cover; background: var(--panel-2); }
 .thumb .meta { padding: 9px 11px; font: 400 12px/1.5 var(--sans); }
 .thumb .meta .name { display: block; font-family: var(--mono); color: var(--fg); }
 
@@ -362,9 +365,9 @@ table button.danger:hover { color: var(--error); border-color: transparent; }
   bottom: 20px;
   right: 20px;
   max-width: 380px;
-  background: #2e1c19;
-  border: 1px solid #6a3a33;
-  color: #f2ddd7;
+  background: #fbeeec;
+  border: 1px solid #e0b7b0;
+  color: var(--error);
   padding: 11px 14px;
   border-radius: 2px;
   font: 400 13px/1.45 var(--sans);

@@ -18,9 +18,15 @@
     // as the spectrum trace, then lifts to bone at the top end. One hue carries
     // strength, so a weak signal and a strong one differ in brightness, not in
     // an arbitrary hue. t in 0..1.
+    // Paper ground to ink: on a light surface a stronger signal has to read as
+    // darker, the way a chart recorder or a printed spectrum does. Same single
+    // hue as the spectrum trace, so the two panels agree.
+    // Starts at a light grey rather than pure white: on paper the noise floor
+    // has to be visible as a band, otherwise the panel looks empty until a
+    // carrier appears.
     const stops = [
-      [20, 18, 14], [30, 58, 61], [58, 108, 112],
-      [120, 175, 178], [231, 223, 208]
+      [232, 236, 237], [198, 216, 216], [138, 180, 182],
+      [44, 104, 109], [16, 44, 47]
     ];
     const scaled = Math.min(0.9999, Math.max(0, t)) * (stops.length - 1);
     const index = Math.floor(scaled);
