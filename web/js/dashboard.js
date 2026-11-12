@@ -112,12 +112,20 @@
       caduNode.title = String(pipeline.cadus_bad || 0) + ' uncorrectable';
     }
     const sdr = status.sdr || {};
-    if (sdr.available) {
-      setText('dash-sdr', sdr.driver + ' @ ' +
-        ED.fmt(sdr.center_freq_hz / 1e6, 3) + ' MHz, ' +
-        ED.fmt(sdr.sample_rate_hz / 1e6, 2) + ' MSPS');
-    } else {
-      setText('dash-sdr', 'unavailable');
+    const sdrNode = document.getElementById('dash-sdr');
+    if (sdrNode) {
+      if (sdr.available) {
+        const freq = ED.fmt(sdr.center_freq_hz / 1e6, 3) + ' MHz';
+        const rate = ED.fmt(sdr.sample_rate_hz / 1e6, 2) + ' MSPS';
+        // The full line wraps into the label column on a phone-width readout.
+        const narrow = window.innerWidth <= 640;
+        sdrNode.textContent = narrow
+          ? sdr.driver + ' ' + freq
+          : sdr.driver + ' @ ' + freq + ', ' + rate;
+        sdrNode.title = sdr.driver + ' ' + freq + ', ' + rate;
+      } else {
+        sdrNode.textContent = 'unavailable';
+      }
     }
     const schedule = status.schedule || {};
     setText('dash-next', schedule.next_entry

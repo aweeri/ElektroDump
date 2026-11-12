@@ -382,21 +382,78 @@ table button.danger:hover { color: var(--error); border-color: transparent; back
 }
 
 @media (max-width: 640px) {
-  header.topbar { padding: 0 16px; gap: 12px; }
-  /* One scrolling row of pages instead of a two-line block that pushes the
-     readouts below the fold. */
+  /* Two compact rows: wordmark + sync pill, then a scrolling page strip.
+     Keeping the pill beside the wordmark saves a whole row of chrome. */
+  header.topbar { padding: 11px 16px 0; gap: 10px 12px; min-height: 0; }
+  header.topbar h1 { font-size: 12px; letter-spacing: .13em; }
+  .status-pill {
+    order: 2;
+    margin-left: auto;
+    width: auto;
+    padding-bottom: 0;
+    font-size: 11px;
+  }
+  .status-pill > span { padding: 0 8px; }
+  .status-pill > span:first-child { padding-left: 0; }
+  .status-pill > span:last-child { display: none; }  /* uptime is desk furniture */
+
   nav.pages {
+    order: 3;
+    flex-basis: 100%;
     gap: 18px;
     flex-wrap: nowrap;
     overflow-x: auto;
-    max-width: 100%;
+    margin: 0 -16px;
+    padding: 0 16px;
     scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(90deg, #000 84%, transparent 100%);
+    mask-image: linear-gradient(90deg, #000 84%, transparent 100%);
   }
   nav.pages::-webkit-scrollbar { display: none; }
-  nav.pages a { padding: 16px 0 14px; }
-  main { padding: 18px 16px 40px; gap: 18px; }
-  .status-pill { width: 100%; margin-left: 0; padding-bottom: 10px; }
-  .status-pill > span:first-child { padding-left: 0; }
-  .big { font-size: 40px; }
+  nav.pages a { padding: 12px 0 10px; font-size: 13px; }
+
+  main { padding: 16px 16px 40px; gap: 16px; }
   .card { padding: 14px 15px 16px; }
+  .card > h2 { margin-bottom: 12px; }
+
+  /* Readouts become a two-column block with each value on its own line, so the
+     ragged "minus above a label, odd column" wrap goes away. */
+  .linkbar { gap: 16px; }
+  .big { font-size: 44px; }
+  .linkbar .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 18px;
+    padding-bottom: 0;
+  }
+  .linkbar .stat { min-width: 0; }
+  /* The next-window value is a sentence, not a number: give it the full width
+     instead of wrapping it inside a half-column. */
+  .linkbar .stat:last-child { grid-column: 1 / -1; }
+  .linkbar .stat:nth-last-child(2) { grid-column: 1 / -1; }
+  .linkbar .stat b { font-size: 14px; overflow-wrap: anywhere; }
+  .linkbar .stat i { font-size: 9px; letter-spacing: .12em; }
+
+  #spark { height: 72px; }
+  .emptybox { min-height: 92px; padding: 12px; }
+  .kv { font-size: 12px; gap: 6px 10px; }
+  .kv dd, .kv > span:nth-child(even) { overflow-wrap: anywhere; }
+  table { font-size: 12px; }
+  th, td { padding: 8px 8px 8px 0; }
+
+  /* Wide tables scroll inside their card instead of crushing every column into
+     a 390px viewport. The card frame stays put; only the table moves. */
+  .card > table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+  .card > table > thead,
+  .card > table > tbody {
+    display: table;
+    width: 100%;
+    min-width: 620px;
+    table-layout: auto;
+  }
 }
