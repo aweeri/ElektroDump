@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <cstdio>
 #include <vector>
 
 #include "dsp/coarse_acq.h"
@@ -28,7 +29,8 @@ struct DemodConfig {
     Constellation constellation = Constellation::BPSK;
     double symbol_rate = 294000.0;
     double rrc_alpha = 0.5;
-    double pll_bw = 0.0145;
+    double pll_bw = 0.0145;    // bulk carrier loop (coarse)
+    double costas_bw = 0.004;  // fine carrier loop, much narrower
     int max_sps = 3;
     int rrc_taps = 33;
 
@@ -89,6 +91,7 @@ private:
     std::vector<std::complex<float>> acq_buf_;
 
     double rms_ = 0.0;
+    FILE* sym_dump_ = nullptr;
     std::vector<std::complex<float>> corr_buf_;
     std::vector<std::complex<float>> rrc_buf_;
     std::vector<std::complex<float>> align_buf_;

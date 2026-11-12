@@ -46,6 +46,8 @@ bool XritPipeline::configure(const Config& cfg, const PipelineParams& params) {
     demod_cfg.pll_bw = params.pll_bw > 0.0
                            ? params.pll_bw
                            : cfg.get_double(std::string(section) + ".pll_bw", 0.0145);
+    demod_cfg.costas_bw =
+        cfg.get_double(std::string(section) + ".costas_bw", 0.004);
     demod_cfg.rrc_taps = static_cast<int>(cfg.get_int("decode.rrc_taps", 33));
     // Coarse carrier acquisition: on by default for HRIT, where a realistic
     // LNB/LO offset exceeds the Costas loop's pull-in range.

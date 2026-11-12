@@ -1,5 +1,8 @@
 #include "dsp/demod_psk.h"
 
+#include <cstdio>
+#include <cstdlib>
+
 #include <cmath>
 #include <mutex>
 
@@ -70,7 +73,12 @@ void PskDemod::configure(const DemodConfig& cfg, uint32_t sample_rate) {
     if (oqpsk_) {
         aligner_.configure(sps_);
     }
-    costas_.configure(cfg_.pll_bw, order);
+    // The Costas is the *fine* carrier loop, running after the PLL has already
+    // taken out the bulk offset. Driving it with the PLL bandwidth (14.5 kHz at
+    // 1 MSPS) injects phase noise straight into the slicer: on a clean 13 dB
+    // LRIT recording that alone put the input BER near 10% and stopped Viterbi
+    // from ever holding. Separate, much narrower default.
+    costas_.configure(cfg_.costas_bw, order);
     evm_.configure(order, 0.002);
     // OQPSK symbol instants sit half a symbol later (I rail delayed by T/2).
     const double initial_delay =
@@ -110,6 +118,12 @@ void PskDemod::reset() {
     corr_phase_ = 0.0;
     acq_buf_.clear();
     rms_ = 0.0;
+    if (sym_dump_ == nullptr) {
+        const char* path = std::getenv("ED_DUMP_PSK_SYMS");
+        if (path != nullptr) {
+            sym_dump_ = std::fopen(path, "wb");
+        }
+    }
     evm_.reset();
     m2m4_.reset();
     snr_db_.store(0.0, std::memory_order_relaxed);
@@ -120,6 +134,11 @@ void PskDemod::reset() {
 void PskDemod::push_soft(double value, std::vector<int8_t>& soft_out) {
     const double scale = 100.0 / std::sqrt(rms_ + 1e-9);
     soft_out.push_back(to_soft(value * scale));
+    if (sym_dump_ != nullptr) {
+        const double v = value * scale;
+        const long q = static_cast<long>(v < -127.0 ? -127.0 : (v > 127.0 ? 127.0 : v));
+        std::fputc(static_cast<int>(q) + 128, sym_dump_);
+    }
 }
 
 void PskDemod::process(const std::complex<float>* iq, std::size_t n,
@@ -211,6 +230,8 @@ void PskDemod::process_block(const std::complex<float>* iq, std::size_t n,
     // Carrier recovery must precede OQPSK alignment: the aligner delays only
     // the real part by T/2, valid only once derotated. A residual carrier makes
     // the rails cross-couple and inverts the Gardner timing S-curve.
+    // Debug hook: dump the demapped symbols for comparison against a reference
+    // demodulator on the same capture.
     costas_buf_.resize(n);
     costas_.process(rrc_buf_.data(), n, costas_buf_.data());
 
