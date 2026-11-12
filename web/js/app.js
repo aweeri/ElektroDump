@@ -90,6 +90,26 @@ ED.setPage = function (key) {
     '</div>';
 };
 
+// One place decides the sync state, SatDump style: red = not synced, amber =
+// syncing (demodulator tracking, no frames yet), green = synced (frames
+// arriving). Every page that shows lock state goes through this so the views
+// cannot drift apart.
+ED.lockState = function (pipeline) {
+  pipeline = pipeline || {};
+  const state = pipeline.locked
+    ? 'synced'
+    : (pipeline.demod_locked ? 'syncing' : 'nosync');
+  return {
+    state: state,
+    text: { synced: 'synced', syncing: 'syncing', nosync: 'not synced' }[state],
+  };
+};
+
+ED.lockHtml = function (pipeline) {
+  const lock = ED.lockState(pipeline);
+  return '<span class="lock ' + lock.state + '">' + lock.text + '</span>';
+};
+
 ED.applyStatus = function (status) {
   const pipeline = status.pipeline || {};
   const setText = function (id, value) {
@@ -99,24 +119,15 @@ ED.applyStatus = function (status) {
   setText('pill-mode', status.mode || '—');
   setText('pill-snr', 'SNR ' + ED.fmt(pipeline.snr_db, 1) + ' dB');
   setText('pill-uptime', 'up ' + ED.fmtDuration(status.uptime_seconds));
-  // Sync state, SatDump style: red = not synced, amber = syncing (demodulator
-  // tracking but no frames yet), green = synced (frames arriving).
-  const lockState = pipeline.locked
-    ? 'synced'
-    : (pipeline.demod_locked ? 'syncing' : 'nosync');
-  const lockText = {
-    synced: 'synced',
-    syncing: 'syncing',
-    nosync: 'not synced',
-  }[lockState];
+  const lock = ED.lockState(pipeline);
   const dot = document.getElementById('pill-dot');
   if (dot) {
-    dot.className = 'dot ' + lockState;
+    dot.className = 'dot ' + lock.state;
   }
   const lockNode = document.getElementById('pill-lock');
   if (lockNode) {
-    lockNode.textContent = lockText;
-    lockNode.className = 'lock ' + lockState;
+    lockNode.textContent = lock.text;
+    lockNode.className = 'lock ' + lock.state;
   }
 };
 

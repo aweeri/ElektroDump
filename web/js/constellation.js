@@ -58,9 +58,10 @@
       const pipeline = status.pipeline || {};
       setText('const-snr', ED.fmt(pipeline.snr_db, 2) + ' dB');
       setText('const-ber', pipeline.locked ? ED.fmt(pipeline.ber, 6) : '—');
-      const demod = pipeline.demod_locked ? 'tracking' : 'no carrier lock';
-      const framing = pipeline.locked ? 'frames ok' : 'no frames';
-      setText('const-lock', demod + ' / ' + framing);
+      const lockNode = document.getElementById('const-lock');
+      if (lockNode) {
+        lockNode.innerHTML = ED.lockHtml(pipeline);
+      }
     } catch (error) {
       // 503 before the first symbols exist, or while the mode switches.
       setText('const-legend', 'no symbols yet (' + error.message + ')');
