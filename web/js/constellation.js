@@ -67,7 +67,7 @@
       draw(data.points || []);
       setText('const-count', String(data.count || 0));
       setText('const-rms', Number(data.rms || 0).toExponential(2));
-      setText('const-mode', data.mode || '-');
+      setText('const-mode', ED.modeLabel(data.mode) || '-');
       setText('const-legend', (data.count || 0) + ' symbols');
       const status = await ED.getJson('/api/v1/status');
       const pipeline = status.pipeline || {};

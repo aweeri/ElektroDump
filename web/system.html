@@ -95,7 +95,7 @@
       setText('sys-sdr-gain', sdr.available
         ? ED.fmt(sdr.gain_tenth_db / 100, 1) + ' dB' : '-');
       setText('sys-sdr-overflows', String(sdr.overflows || 0));
-      setText('sys-mode', status.mode || '-');
+      setText('sys-mode', ED.modeLabel(status.mode) || '-');
       setText('sys-state', pipeline.state || '-');
       setText('sys-locked', pipeline.locked ? 'yes' : 'no');
       setText('sys-snr', ED.fmt(pipeline.snr_db, 2) + ' dB');

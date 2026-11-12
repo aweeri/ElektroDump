@@ -151,7 +151,7 @@
         '<td class="mono">' + ED.esc(entry.start) + '</td>' +
         '<td class="mono">' + ED.esc(entry.end) + '</td>' +
         '<td class="mono num">' + duration(entry) + '</td>' +
-        '<td>' + ED.esc(entry.mode) + '</td>' +
+        '<td>' + ED.esc(ED.modeLabel(entry.mode)) + '</td>' +
         '</tr>';
     }).join('');
   }

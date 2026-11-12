@@ -93,7 +93,7 @@
 
   function renderStatus(status) {
     const pipeline = status.pipeline || {};
-    setText('dash-mode', status.mode || '-');
+    setText('dash-mode', ED.modeLabel(status.mode) || '-');
     setText('dash-satellite', status.satellite || '-');
     setText('dash-version', status.version || '-');
     setText('dash-state', pipeline.state || '-');
@@ -128,8 +128,14 @@
       }
     }
     const schedule = status.schedule || {};
-    setText('dash-next', schedule.next_entry
-      ? (schedule.next_entry + ' in ' + ED.fmtDuration(schedule.seconds_to_next))
+    // "hrit-1512 in 28m" reads as a filename; the mode is what she wants to see.
+    const nextName = schedule.next_entry || '';
+    const nextMode = nextName.split('-')[0].toUpperCase();
+    const label = ['HRIT', 'LRIT', 'GGAK'].indexOf(nextMode) >= 0
+      ? nextMode
+      : nextName;
+    setText('dash-next', nextName
+      ? (label + ' in ' + ED.fmtDuration(schedule.seconds_to_next))
       : 'none');
 
     const snr = Number(pipeline.snr_db);

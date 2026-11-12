@@ -94,6 +94,15 @@ ED.setPage = function (key) {
 // syncing (demodulator tracking, no frames yet), green = synced (frames
 // arriving). Every page that shows lock state goes through this so the views
 // cannot drift apart.
+// Modes are acronyms (GGAK, LRIT, HRIT). The daemon writes them lower case for
+// config keys; the interface should not.
+ED.modeLabel = function (name) {
+  const text = String(name || '');
+  return (text === 'ggak' || text === 'lrit' || text === 'hrit')
+    ? text.toUpperCase()
+    : text;
+};
+
 ED.lockState = function (pipeline) {
   pipeline = pipeline || {};
   const state = pipeline.locked
@@ -116,7 +125,7 @@ ED.applyStatus = function (status) {
     const node = document.getElementById(id);
     if (node) { node.textContent = value; }
   };
-  setText('pill-mode', status.mode || '-');
+  setText('pill-mode', ED.modeLabel(status.mode) || '-');
   setText('pill-snr', 'SNR ' + ED.fmt(pipeline.snr_db, 1) + ' dB');
   setText('pill-uptime', 'up ' + ED.fmtDuration(status.uptime_seconds));
   const lock = ED.lockState(pipeline);
