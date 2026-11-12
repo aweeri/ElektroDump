@@ -69,6 +69,29 @@ void PskDemod::configure(const DemodConfig& cfg, uint32_t sample_rate) {
     oqpsk_ = (cfg_.constellation == Constellation::OQPSK);
     const int order = (cfg_.constellation == Constellation::BPSK) ? 2 : 4;
 
+    // Anti-alias filter at the input rate, cutoff just under the decimated
+    // Nyquist, long enough to matter (8 taps per output sample).
+    {
+        const std::size_t taps = 8 * decim_ + 1;
+        const double fc = 0.42 / static_cast<double>(decim_);  // cycles/sample in
+        aa_taps_.assign(taps, 0.0f);
+        double sum = 0.0;
+        const double mid = static_cast<double>(taps - 1) / 2.0;
+        for (std::size_t i = 0; i < taps; ++i) {
+            const double t = static_cast<double>(i) - mid;
+            const double sinc = (std::fabs(t) < 1e-9) ? 1.0 : std::sin(2.0 * kPi * fc * t) / (2.0 * kPi * fc * t);
+            const double w = 0.54 - 0.46 * std::cos(2.0 * kPi * static_cast<double>(i) / static_cast<double>(taps - 1));
+            aa_taps_[i] = static_cast<float>(2.0 * fc * sinc * w);
+            sum += aa_taps_[i];
+        }
+        for (float& v : aa_taps_) {
+            v = static_cast<float>(v / sum);
+        }
+        aa_line_.assign(taps, std::complex<float>(0.0f, 0.0f));
+        aa_pos_ = 0;
+        aa_count_ = 0;
+    }
+
     rrc_.configure(sps_, cfg_.rrc_alpha, cfg_.rrc_taps);
     if (oqpsk_) {
         aligner_.configure(sps_);
@@ -226,6 +249,10 @@ void PskDemod::process_block(const std::complex<float>* iq, std::size_t n,
 
     rrc_buf_.resize(n);
     rrc_.process(src, n, rrc_buf_.data());
+
+    // No AGC: it normalises the amplitude to 1.0, which multiplies the effective
+    // Costas and timing-loop gains by the signal amplitude (about 30x on a real
+    // capture) and destabilises loops that are tuned for the raw level.
 
     // Carrier recovery must precede OQPSK alignment: the aligner delays only
     // the real part by T/2, valid only once derotated. A residual carrier makes

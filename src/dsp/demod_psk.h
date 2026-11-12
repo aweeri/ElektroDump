@@ -105,6 +105,14 @@ private:
 
     // Input decimation to the configured samples/symbol.
     std::size_t decim_ = 1;
+    // Anti-alias FIR run at the input rate before subsampling. A boxcar folds
+    // every Nyquist zone into the band (about 3 dB of noise for decim 2, more
+    // for 3) and adds ISI, which is enough to keep RS from correcting.
+    std::vector<float> aa_taps_;
+    std::vector<std::complex<float>> aa_line_;
+    std::size_t aa_pos_ = 0;
+    std::size_t aa_count_ = 0;
+    double agc_gain_ = 1.0;
     double dec_rate_ = 0.0;
     std::complex<float> dec_sum_{0.0f, 0.0f};
     std::size_t dec_count_ = 0;
