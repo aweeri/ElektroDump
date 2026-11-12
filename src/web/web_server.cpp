@@ -13,6 +13,7 @@ bool WebServer::start(const Config& cfg, const WebContext& ctx) {
     }
 
     register_status_api(router_, ctx_);
+    register_history_api(router_, ctx_);
     register_fft_api(router_, ctx_);
     register_constellation_api(router_, ctx_);
     register_products_api(router_, ctx_);

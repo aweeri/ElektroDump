@@ -227,6 +227,11 @@ main {
 
 #constellation { max-width: 620px; }
 
+/* Fixed CSS height: the canvas attribute is the *backing store* and gets
+   rewritten for device pixels. Reading it back as the layout height makes the
+   element grow on every redraw. */
+#spark { height: 88px; }
+
 canvas {
   width: 100%;
   display: block;

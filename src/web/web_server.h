@@ -32,6 +32,8 @@ struct PipelineSnapshot {
     PipelineStats stats;
 };
 
+class SnrHistory;
+
 struct WebContext {
     const Config* config = nullptr;
     const Metrics* metrics = nullptr;
@@ -41,6 +43,8 @@ struct WebContext {
     const output::ProductStore* products = nullptr;
     // M9: in-memory GGAK science series and the webhook dispatcher.
     const ggak::GgakScienceStore* ggak = nullptr;
+    // 1 Hz SNR ring so the dashboard chart opens with history.
+    const SnrHistory* snr_history = nullptr;
     WebhookDispatcher* webhook = nullptr;
     // Live pipeline mode as a PipelineMode code; updated by the scheduler.
     const std::atomic<int>* mode_code = nullptr;
@@ -81,6 +85,7 @@ private:
 
 // Endpoint groups (each in its own translation unit).
 void register_status_api(Router& router, const WebContext& ctx);
+void register_history_api(Router& router, const WebContext& ctx);
 void register_fft_api(Router& router, const WebContext& ctx);
 void register_constellation_api(Router& router, const WebContext& ctx);
 void register_products_api(Router& router, const WebContext& ctx);

@@ -3,7 +3,9 @@
 
 (function () {
   const snrHistory = [];
+  const HISTORY_LIMIT = 300;
   let lastProductId = null;
+  let seeded = false;
 
   function setText(id, value) {
     const node = document.getElementById(id);
@@ -19,8 +21,11 @@
 
   function fitCanvas(canvas) {
     const dpr = window.devicePixelRatio || 1;
-    const w = canvas.clientWidth || canvas.width;
-    const h = Number(canvas.getAttribute('height')) || 88;
+    const w = canvas.clientWidth || 900;
+    // Layout height comes from CSS, never from the attribute: the attribute is
+    // the device-pixel backing store and is rewritten below, so reading it back
+    // multiplies the height by the DPR on every frame.
+    const h = canvas.clientHeight || 88;
     if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
@@ -46,15 +51,41 @@
     ctx.lineTo(W, H - 0.5);
     ctx.stroke();
     if (snrHistory.length < 2) { return; }
-    const min = Math.min.apply(null, snrHistory);
-    const max = Math.max.apply(null, snrHistory);
+    let min = Math.min.apply(null, snrHistory);
+    let max = Math.max.apply(null, snrHistory);
+    // At least a 10 dB window, so a quiet stretch is not magnified into drama.
+    if (max - min < 10) {
+      const mid = (max + min) / 2;
+      min = mid - 5;
+      max = mid + 5;
+    }
     const span = (max - min) || 1;
+    // Two series: the raw one-second samples faint, and the five-sample mean
+    // over them in the accent. 1 Hz SNR is spiky enough that a single trace
+    // reads as noise rather than as a level.
+    const smooth = [];
+    for (let i = 0; i < snrHistory.length; i++) {
+      const from = Math.max(0, i - 4);
+      let sum = 0;
+      for (let j = from; j <= i; j++) { sum += snrHistory[j]; }
+      smooth.push(sum / (i - from + 1));
+    }
+    ctx.lineWidth = 1;
     ctx.strokeStyle = cssVar('--accent', '#5f9ea3');
-    ctx.lineWidth = 1.25;
+    ctx.globalAlpha = 0.34;
     ctx.beginPath();
     for (let i = 0; i < snrHistory.length; i++) {
       const x = i * W / (snrHistory.length - 1);
       const y = H - 4 - ((snrHistory[i] - min) / span) * (H - 10);
+      if (i === 0) { ctx.moveTo(x, y); } else { ctx.lineTo(x, y); }
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let i = 0; i < smooth.length; i++) {
+      const x = i * W / (smooth.length - 1);
+      const y = H - 4 - ((smooth[i] - min) / span) * (H - 10);
       if (i === 0) { ctx.moveTo(x, y); } else { ctx.lineTo(x, y); }
     }
     ctx.stroke();
@@ -96,8 +127,9 @@
     const snr = Number(pipeline.snr_db);
     if (!isNaN(snr)) {
       snrHistory.push(snr);
-      if (snrHistory.length > 120) { snrHistory.shift(); }
+      if (snrHistory.length > HISTORY_LIMIT) { snrHistory.shift(); }
       drawSpark();
+      renderAvg();
     }
   }
 
@@ -123,6 +155,35 @@
       ' · ' + meta.created;
   }
 
+  // The daemon keeps a one-second SNR ring, so the chart opens with a curve
+  // instead of an empty axis. Once seeded, the 1 Hz status poll keeps it live.
+  async function seedHistory() {
+    try {
+      const data = await ED.getJson('/api/v1/history/snr?limit=' + HISTORY_LIMIT);
+      const samples = data.samples || [];
+      snrHistory.length = 0;
+      for (const value of samples) {
+        snrHistory.push(Number(value));
+      }
+      seeded = true;
+      drawSpark();
+      renderAvg(data.avg5_db);
+    } catch (error) {
+      seeded = true;  // live polling still works without history
+    }
+  }
+
+  function renderAvg(fallback) {
+    const node = document.getElementById('dash-avg');
+    if (!node) { return; }
+    const recent = snrHistory.slice(-5);
+    let value = Number(fallback);
+    if (recent.length > 0) {
+      value = recent.reduce(function (a, b) { return a + b; }, 0) / recent.length;
+    }
+    node.textContent = isFinite(value) ? ED.fmt(value, 2) : '-';
+  }
+
   async function tick() {
     try {
       const status = await ED.getJson('/api/v1/status');
@@ -134,6 +195,7 @@
   }
 
   ED.setPage('index');
+  seedHistory();
   ED.startStatusPolling();
   ED.repeatWhileVisible(tick, 1000);
 })();

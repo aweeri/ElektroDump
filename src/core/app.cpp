@@ -481,6 +481,8 @@ int App::run_loop(bool with_sdr) {
     ctx.scheduler = scheduler_.get();
     ctx.cadu = cadu_.get();
     ctx.ggak = ggak_science_.get();
+    snr_history_ = std::make_unique<web::SnrHistory>(1800);
+    ctx.snr_history = snr_history_.get();
     ctx.webhook = webhook_.get();
     ctx.constellation = [this](std::vector<std::complex<float>>& out) {
         std::lock_guard<std::mutex> lock(pipeline_mutex_);
@@ -529,8 +531,30 @@ int App::run_loop(bool with_sdr) {
     std::signal(SIGTERM, handle_signal);
 
     ED_LOG(Info, "app") << "running; press Ctrl-C to stop";
+    int history_ticks = 0;
+    bool history_started = false;
     while (!stop_requested_.load(std::memory_order_relaxed)) {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        // One SNR sample per second keeps the chart's step simple and lets the
+        // page show history the moment it opens.
+        if (++history_ticks >= 5) {
+            history_ticks = 0;
+            if (snr_history_) {
+                float snr = 0.0f;
+                if (pipeline_) {
+                    snr = static_cast<float>(pipeline_->stats().snr_db);
+                }
+                // The first seconds after start report 0 dB before the
+                // demodulator has produced anything; those would drag the
+                // chart's average down for 15 minutes.
+                if (snr > 0.0f) {
+                    history_started = true;
+                }
+                if (history_started) {
+                    snr_history_->push(snr, static_cast<int>(mode_));
+                }
+            }
+        }
     }
 
     ED_LOG(Info, "app") << "stop requested; shutting down";

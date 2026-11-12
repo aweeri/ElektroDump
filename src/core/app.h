@@ -18,6 +18,7 @@
 #include "scheduler/cadu_lifecycle.h"
 #include "scheduler/scheduler.h"
 #include "sdr/sdr_source.h"
+#include "web/snr_history.h"
 #include "web/web_server.h"
 #include "web/webhook.h"
 
@@ -98,6 +99,8 @@ private:
     // In-memory GGAK science series + the product-created webhook.
     std::unique_ptr<ggak::GgakScienceStore> ggak_science_;
     std::unique_ptr<web::WebhookDispatcher> webhook_;
+    // One-second SNR ring behind /api/v1/history/snr.
+    std::unique_ptr<web::SnrHistory> snr_history_;
 
     // pipeline_mutex_ serialises mode switches against run_loop startup/shutdown.
     std::mutex pipeline_mutex_;
