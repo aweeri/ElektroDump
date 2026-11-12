@@ -1,16 +1,26 @@
-/* ElektroDump — live FFT spectrum + scrolling waterfall (M9). */
+/* ElektroDump - live FFT spectrum + scrolling waterfall (M9). */
 'use strict';
 
 (function () {
+  function cssVar(name, fallback) {
+    const v = getComputedStyle(document.documentElement)
+      .getPropertyValue(name).trim();
+    return v || fallback;
+  }
+  function accentColour() { return cssVar('--accent', '#5f9ea3'); }
+  function mapBg() { return cssVar('--bg', '#14120e'); }
   let ready = false;
   let smooth = null;                 // EMA of the spectrum, for the trace
   let lo = null, hi = null;          // smoothed display range, in dB
 
   function colour(t) {
-    // Blue -> cyan -> yellow -> red ramp, t in 0..1.
+    // Sequential ramp, not a rainbow: the ground darkens into the same petrol
+    // as the spectrum trace, then lifts to bone at the top end. One hue carries
+    // strength, so a weak signal and a strong one differ in brightness, not in
+    // an arbitrary hue. t in 0..1.
     const stops = [
-      [10, 20, 60], [40, 120, 200], [80, 220, 220],
-      [230, 220, 90], [230, 70, 60]
+      [20, 18, 14], [30, 58, 61], [58, 108, 112],
+      [120, 175, 178], [231, 223, 208]
     ];
     const scaled = Math.min(0.9999, Math.max(0, t)) * (stops.length - 1);
     const index = Math.floor(scaled);
@@ -76,7 +86,7 @@
       }
     }
 
-    ctx.strokeStyle = '#4fd1c5';
+    ctx.strokeStyle = accentColour();
     ctx.lineWidth = 1;
     ctx.beginPath();
     for (let i = 0; i < smooth.length; i++) {
@@ -93,7 +103,7 @@
     if (!ready || canvas.width !== bins.length) {
       canvas.width = bins.length;
       canvas.height = 200;
-      ctx.fillStyle = '#060a0f';
+      ctx.fillStyle = mapBg();
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ready = true;
     } else {

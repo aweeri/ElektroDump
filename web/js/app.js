@@ -1,4 +1,4 @@
-/* ElektroDump — shared shell: nav, status pill, formatting, 1 Hz polling (M9). */
+/* ElektroDump - shared shell: nav, status pill, formatting, 1 Hz polling (M9). */
 'use strict';
 
 window.ED = window.ED || {};
@@ -27,7 +27,7 @@ ED.esc = function (value) {
 
 ED.fmt = function (value, digits) {
   if (value === null || value === undefined || isNaN(Number(value))) {
-    return '—';
+    return '-';
   }
   return Number(value).toFixed(digits === undefined ? 2 : digits);
 };
@@ -85,8 +85,8 @@ ED.setPage = function (key) {
     '<span><span class="dot nosync" id="pill-dot"></span> ' +
     '<span id="pill-mode">…</span></span>' +
     '<span id="pill-lock" class="lock nosync">not synced</span>' +
-    '<span id="pill-snr">SNR —</span>' +
-    '<span id="pill-uptime">up —</span>' +
+    '<span id="pill-snr">SNR -</span>' +
+    '<span id="pill-uptime">up -</span>' +
     '</div>';
 };
 
@@ -116,7 +116,7 @@ ED.applyStatus = function (status) {
     const node = document.getElementById(id);
     if (node) { node.textContent = value; }
   };
-  setText('pill-mode', status.mode || '—');
+  setText('pill-mode', status.mode || '-');
   setText('pill-snr', 'SNR ' + ED.fmt(pipeline.snr_db, 1) + ' dB');
   setText('pill-uptime', 'up ' + ED.fmtDuration(status.uptime_seconds));
   const lock = ED.lockState(pipeline);

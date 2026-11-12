@@ -1,4 +1,4 @@
-/* ElektroDump — schedule editor (M9). */
+/* ElektroDump - schedule editor (M9). */
 'use strict';
 
 (function () {
@@ -67,7 +67,7 @@
       const state = data.state || {};
       document.getElementById('sched-state').textContent = state.active_entry
         ? ('active: ' + state.active_entry + ' · next: ' +
-           (state.next_entry || '—') + ' in ' +
+           (state.next_entry || '-') + ' in ' +
            ED.fmtDuration(state.seconds_to_next))
         : 'no active entry';
     } catch (error) {
@@ -92,7 +92,7 @@
       const fields = (result.data.fields || [])
         .map(function (f) { return f.path + ': ' + f.message; }).join('; ');
       output.textContent = 'error: ' + (result.data.error || result.status) +
-        (fields ? ' — ' + fields : '');
+        (fields ? ' - ' + fields : '');
       output.className = '';
     }
   }

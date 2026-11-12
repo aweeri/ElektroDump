@@ -1,4 +1,4 @@
-/* ElektroDump — dashboard widgets (M9). */
+/* ElektroDump - dashboard widgets (M9). */
 'use strict';
 
 (function () {
@@ -10,22 +10,51 @@
     if (node) { node.textContent = value; }
   }
 
+  // Palette comes from the stylesheet so there is one source of colour truth.
+  function cssVar(name, fallback) {
+    const v = getComputedStyle(document.documentElement)
+      .getPropertyValue(name).trim();
+    return v || fallback;
+  }
+
+  function fitCanvas(canvas) {
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth || canvas.width;
+    const h = Number(canvas.getAttribute('height')) || 88;
+    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+    }
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx: ctx, w: w, h: h };
+  }
+
   function drawSpark() {
     const canvas = document.getElementById('spark');
     if (!canvas) { return; }
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const fit = fitCanvas(canvas);
+    const ctx = fit.ctx;
+    const W = fit.w;
+    const H = fit.h;
+    ctx.clearRect(0, 0, W, H);
+    // hairline baseline, then the trace over it
+    ctx.strokeStyle = cssVar('--rule-soft', '#262219');
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, H - 0.5);
+    ctx.lineTo(W, H - 0.5);
+    ctx.stroke();
     if (snrHistory.length < 2) { return; }
     const min = Math.min.apply(null, snrHistory);
     const max = Math.max.apply(null, snrHistory);
     const span = (max - min) || 1;
-    ctx.strokeStyle = '#4fd1c5';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = cssVar('--accent', '#5f9ea3');
+    ctx.lineWidth = 1.25;
     ctx.beginPath();
     for (let i = 0; i < snrHistory.length; i++) {
-      const x = i * canvas.width / (snrHistory.length - 1);
-      const y = canvas.height - 3 - ((snrHistory[i] - min) / span) *
-        (canvas.height - 6);
+      const x = i * W / (snrHistory.length - 1);
+      const y = H - 4 - ((snrHistory[i] - min) / span) * (H - 10);
       if (i === 0) { ctx.moveTo(x, y); } else { ctx.lineTo(x, y); }
     }
     ctx.stroke();
@@ -33,18 +62,24 @@
 
   function renderStatus(status) {
     const pipeline = status.pipeline || {};
-    setText('dash-mode', status.mode || '—');
-    setText('dash-satellite', status.satellite || '—');
-    setText('dash-version', status.version || '—');
-    setText('dash-state', pipeline.state || '—');
-    setText('dash-snr', ED.fmt(pipeline.snr_db, 2) + ' dB');
-    setText('dash-ber', pipeline.locked ? ED.fmt(pipeline.ber, 6) : '—');
+    setText('dash-mode', status.mode || '-');
+    setText('dash-satellite', status.satellite || '-');
+    setText('dash-version', status.version || '-');
+    setText('dash-state', pipeline.state || '-');
+    const snrNode = document.getElementById('dash-snr');
+    if (snrNode) {
+      snrNode.innerHTML = ED.fmt(pipeline.snr_db, 2) + '<small>dB</small>';
+    }
+    setText('dash-ber', pipeline.locked ? ED.fmt(pipeline.ber, 6) : '-');
     const lockNode = document.getElementById('dash-lock');
     if (lockNode) {
       lockNode.innerHTML = ED.lockHtml(pipeline);
     }
-    setText('dash-cadus', String(pipeline.cadus_total || 0) + ' (' +
-      String(pipeline.cadus_bad || 0) + ' bad)');
+    const caduNode = document.getElementById('dash-cadus');
+    if (caduNode) {
+      caduNode.textContent = String(pipeline.cadus_total || 0);
+      caduNode.title = String(pipeline.cadus_bad || 0) + ' uncorrectable';
+    }
     const sdr = status.sdr || {};
     if (sdr.available) {
       setText('dash-sdr', sdr.driver + ' @ ' +
@@ -71,10 +106,15 @@
     const img = document.getElementById('latest-image');
     const caption = document.getElementById('latest-caption');
     if (!img || !caption) { return; }
+    const empty = document.getElementById('latest-empty');
     if (!meta) {
-      caption.textContent = 'no product yet';
+      img.style.display = 'none';
+      if (empty) { empty.style.display = ''; }
+      caption.textContent = '';
       return;
     }
+    img.style.display = '';
+    if (empty) { empty.style.display = 'none'; }
     if (meta.id !== lastProductId) {
       lastProductId = meta.id;
       img.src = '/api/v1/products/' + encodeURIComponent(meta.id) + '/image';

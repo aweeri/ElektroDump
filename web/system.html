@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ElektroDump — System</title>
+<title>ElektroDump - System</title>
 <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
@@ -13,35 +13,35 @@
     <div class="card">
       <h2>Host</h2>
       <dl class="kv">
-        <dt>CPU</dt><dd id="sys-cpu">—</dd>
-        <dt>memory</dt><dd id="sys-mem">—</dd>
-        <dt>temperature</dt><dd id="sys-temp">—</dd>
-        <dt>disk free</dt><dd id="sys-disk">—</dd>
-        <dt>load (1m)</dt><dd id="sys-load">—</dd>
-        <dt>uptime</dt><dd id="sys-uptime">—</dd>
+        <dt>CPU</dt><dd id="sys-cpu">-</dd>
+        <dt>memory</dt><dd id="sys-mem">-</dd>
+        <dt>temperature</dt><dd id="sys-temp">-</dd>
+        <dt>disk free</dt><dd id="sys-disk">-</dd>
+        <dt>load (1m)</dt><dd id="sys-load">-</dd>
+        <dt>uptime</dt><dd id="sys-uptime">-</dd>
       </dl>
     </div>
     <div class="card">
       <h2>SDR</h2>
       <dl class="kv">
-        <dt>driver</dt><dd id="sys-sdr-driver">—</dd>
-        <dt>frequency</dt><dd id="sys-sdr-freq">—</dd>
-        <dt>sample rate</dt><dd id="sys-sdr-rate">—</dd>
-        <dt>gain</dt><dd id="sys-sdr-gain">—</dd>
-        <dt>overflows</dt><dd id="sys-sdr-overflows">—</dd>
+        <dt>driver</dt><dd id="sys-sdr-driver">-</dd>
+        <dt>frequency</dt><dd id="sys-sdr-freq">-</dd>
+        <dt>sample rate</dt><dd id="sys-sdr-rate">-</dd>
+        <dt>gain</dt><dd id="sys-sdr-gain">-</dd>
+        <dt>overflows</dt><dd id="sys-sdr-overflows">-</dd>
       </dl>
     </div>
     <div class="card">
       <h2>Pipeline</h2>
       <dl class="kv">
-        <dt>mode</dt><dd id="sys-mode">—</dd>
-        <dt>state</dt><dd id="sys-state">—</dd>
-        <dt>locked</dt><dd id="sys-locked">—</dd>
-        <dt>SNR</dt><dd id="sys-snr">—</dd>
-        <dt>BER</dt><dd id="sys-ber">—</dd>
-        <dt>CADU total</dt><dd id="sys-cadu-total">—</dd>
-        <dt>CADU bad</dt><dd id="sys-cadu-bad">—</dd>
-        <dt>files</dt><dd id="sys-files">—</dd>
+        <dt>mode</dt><dd id="sys-mode">-</dd>
+        <dt>state</dt><dd id="sys-state">-</dd>
+        <dt>locked</dt><dd id="sys-locked">-</dd>
+        <dt>SNR</dt><dd id="sys-snr">-</dd>
+        <dt>BER</dt><dd id="sys-ber">-</dd>
+        <dt>CADU total</dt><dd id="sys-cadu-total">-</dd>
+        <dt>CADU bad</dt><dd id="sys-cadu-bad">-</dd>
+        <dt>files</dt><dd id="sys-files">-</dd>
       </dl>
     </div>
     <div class="card">
@@ -87,14 +87,16 @@
       const pipeline = status.pipeline || {};
       setText('sys-sdr-driver', sdr.available ? sdr.driver : 'unavailable');
       setText('sys-sdr-freq', sdr.available
-        ? ED.fmt(sdr.center_freq_hz / 1e6, 3) + ' MHz' : '—');
+        ? ED.fmt(sdr.center_freq_hz / 1e6, 3) + ' MHz' : '-');
       setText('sys-sdr-rate', sdr.available
-        ? ED.fmt(sdr.sample_rate_hz / 1e6, 2) + ' MSPS' : '—');
+        ? ED.fmt(sdr.sample_rate_hz / 1e6, 2) + ' MSPS' : '-');
+      // The backend maps gain_tenth_db/100, clamped per stage, so /100 is the
+      // gain actually applied. /10 printed "150.0 dB" for a 15 dB setting.
       setText('sys-sdr-gain', sdr.available
-        ? ED.fmt(sdr.gain_tenth_db / 10, 1) + ' dB' : '—');
+        ? ED.fmt(sdr.gain_tenth_db / 100, 1) + ' dB' : '-');
       setText('sys-sdr-overflows', String(sdr.overflows || 0));
-      setText('sys-mode', status.mode || '—');
-      setText('sys-state', pipeline.state || '—');
+      setText('sys-mode', status.mode || '-');
+      setText('sys-state', pipeline.state || '-');
       setText('sys-locked', pipeline.locked ? 'yes' : 'no');
       setText('sys-snr', ED.fmt(pipeline.snr_db, 2) + ' dB');
       setText('sys-ber', ED.fmt(pipeline.ber, 6));

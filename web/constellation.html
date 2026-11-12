@@ -3,33 +3,36 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ElektroDump — Constellation</title>
+<title>ElektroDump - Constellation</title>
 <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
 <header class="topbar" id="topbar"></header>
 <main>
-  <div class="grid">
-    <div class="card">
-      <h2>Constellation</h2>
+  <div class="grid two">
+    <section class="card">
+      <h2>Symbol cloud - I/Q after the carrier loop</h2>
       <canvas id="constellation" width="520" height="520"></canvas>
-      <div class="muted" id="const-legend" style="margin-top:8px">waiting for symbols…</div>
-    </div>
-    <div class="card">
-      <h2>Symbols</h2>
-      <div class="kv"><span>points</span><span id="const-count">—</span></div>
-      <div class="kv"><span>RMS</span><span id="const-rms">—</span></div>
-      <div class="kv"><span>SNR</span><span id="const-snr">—</span></div>
-      <div class="kv"><span>lock</span><span id="const-lock">—</span></div>
-      <div class="kv"><span>BER</span><span id="const-ber">—</span></div>
-      <div class="kv"><span>mode</span><span id="const-mode">—</span></div>
-      <div class="muted" style="margin-top:12px">
-        Every dot is one demodulated symbol, scaled by the symbol RMS.
-        A locked PSK/Pm-BPSK link shows a tight cloud on the axis: two lobes for
-        BPSK, four for OQPSK. A ring means the carrier loop is not tracking, a
-        fuzzy blob means the symbol timing is off.
-      </div>
-    </div>
+      <div class="muted" id="const-legend" style="margin-top:10px;font-family:var(--mono);font-size:12px">waiting for symbols…</div>
+    </section>
+
+    <section class="card">
+      <h2>Readout</h2>
+      <dl class="kv">
+        <dt>points</dt><dd id="const-count">-</dd>
+        <dt>rms</dt><dd id="const-rms">-</dd>
+        <dt>snr</dt><dd id="const-snr">-</dd>
+        <dt>sync</dt><dd id="const-lock">-</dd>
+        <dt>ber</dt><dd id="const-ber">-</dd>
+        <dt>mode</dt><dd id="const-mode">-</dd>
+      </dl>
+      <p class="muted" style="margin:18px 0 0;font-size:13px;line-height:1.55">
+        One dot per demodulated symbol, scaled by symbol rms. A tracking
+        Pm-BPSK link gives two lobes on the axis; four lobes mean OQPSK; a
+        ring means the carrier loop is not tracking; a diffuse blob means the
+        symbol timing is wrong.
+      </p>
+    </section>
   </div>
 </main>
 <script src="/js/api.js"></script>
