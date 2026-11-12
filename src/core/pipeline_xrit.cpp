@@ -71,7 +71,10 @@ bool XritPipeline::configure(const Config& cfg, const PipelineParams& params) {
     fec_cfg.rs_interleave = params.rs_interleave;
     fec_cfg.rs_enabled = params.rs_interleave > 0;
     fec_cfg.rs_usecheck = params.rs_usecheck;
-    fec_cfg.rs_dual_basis = cfg.get_bool("decode.rs_dualbasis", false);
+    // CCSDS RS transmits in the dual basis; SatDump defaults this to true and real
+    // LRIT recordings only decode with it on (13/120 frames had all-zero
+    // syndromes with the dual-basis conversion, 0/120 without).
+    fec_cfg.rs_dual_basis = cfg.get_bool("decode.rs_dualbasis", true);
     fec_cfg.viterbi_ber_threshold =
         cfg.get_double("decode.viterbi_ber_threshold", 0.30);
     fec_cfg.viterbi_outsync_after =

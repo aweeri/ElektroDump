@@ -101,7 +101,7 @@
     "rs_interleave": 4,
     "rs_type": "rs223",
     "rs_usecheck": true,
-    "rs_dualbasis": false,
+    "rs_dualbasis": true,
     "rrc_taps": 33,
     "viterbi_ber_threshold": 0.3,
     "viterbi_outsync_after": 20,
