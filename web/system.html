@@ -116,6 +116,20 @@
 
   ED.setPage('system');
   ED.startStatusPolling();
+
+  // Public host: no write controls, and no raw dump (it carries paths and a
+  // device serial a stranger has no business reading).
+  ED.getJson('/api/v1/status').then(function (data) {
+    if (!data || !data.public) { return; }
+    for (const id of ['webhook-test', 'webhook-result']) {
+      const node = document.getElementById(id);
+      if (node) { node.style.display = 'none'; }
+    }
+    const raw = document.getElementById('sys-raw');
+    if (raw && raw.closest('.card')) {
+      raw.closest('.card').style.display = 'none';
+    }
+  }).catch(function () { /* leave the page as-is */ });
   ED.repeatWhileVisible(tick, 1000);
 })();
 </script>
