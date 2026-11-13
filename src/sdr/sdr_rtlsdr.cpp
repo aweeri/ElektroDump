@@ -141,6 +141,31 @@ public:
         return false;
     }
 
+    bool set_sample_rate(uint32_t rate_hz) override {
+        if (dev_ == nullptr) {
+            return false;
+        }
+        // The RTL-SDR whitelist is coarse (250k..3.2M); pick the nearest rate
+        // the tuner supports instead of failing the whole mode switch.
+        uint32_t chosen = kSampleRates[0];
+        for (uint32_t candidate : kSampleRates) {
+            if (std::abs(static_cast<long long>(candidate) -
+                         static_cast<long long>(rate_hz)) <
+                std::abs(static_cast<long long>(chosen) -
+                         static_cast<long long>(rate_hz))) {
+                chosen = candidate;
+            }
+        }
+        if (rtlsdr_set_sample_rate(dev_, chosen) != 0) {
+            last_error_ = "rtlsdr_set_sample_rate failed";
+            return false;
+        }
+        const uint32_t actual = static_cast<uint32_t>(rtlsdr_get_sample_rate(dev_));
+        rate_.store(actual != 0 ? actual : chosen, std::memory_order_relaxed);
+        cfg_.sample_rate_hz = rate_.load(std::memory_order_relaxed);
+        return true;
+    }
+
     bool set_gain(int tenth_db) override {
         if (dev_ == nullptr) {
             return false;

@@ -4,6 +4,7 @@
 #include <complex>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "core/ring_buffer.h"
 
@@ -28,6 +29,9 @@ const char* pipeline_mode_name(PipelineMode mode);
 struct PipelineParams {
     PipelineMode mode = PipelineMode::GGAK;
     uint64_t center_freq_hz = 0;
+    // Offset between the radio's centre and center_freq_hz, used when one
+    // wideband capture serves several downlinks (0 = carrier at DC).
+    double freq_offset_hz = 0.0;
     uint32_t sample_rate_hz = 0;
     double symbol_rate = 0.0;
     std::string constellation;  // "bpsk" | "oqpsk" | "pm"
@@ -44,7 +48,12 @@ struct PipelineParams {
 
 struct PipelineStats {
     bool running = false;
+    // Frame lock (demodulator tracking *and* valid frames arriving).
     bool locked = false;
+    // Demodulator tracking on its own: symbols are usable even when the frame
+    // layer has not found anything yet. Conflating the two makes a working
+    // demod look dead whenever the framing does not match.
+    bool demod_locked = false;
     double ber = 0.0;
     double snr_db = 0.0;
     uint64_t cadus_total = 0;
@@ -75,6 +84,10 @@ public:
     virtual void start() = 0;
     virtual void stop() = 0;
     virtual PipelineStats stats() const = 0;
+    // Most recent demodulated symbols (empty when the mode has none yet).
+    virtual void constellation(std::vector<std::complex<float>>& out) const {
+        out.clear();
+    }
 };
 
 }  // namespace ed

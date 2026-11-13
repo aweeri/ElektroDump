@@ -47,6 +47,9 @@ bool GgakPipeline::configure(const Config& cfg, const PipelineParams& params) {
     demod_cfg.max_carrier_offset_hz =
         cfg.get_double("ggak.max_carrier_offset_hz", 50000.0);
     demod_cfg.subcarrier_hz = cfg.get_double("ggak.subcarrier_hz", 0.0);
+    demod_cfg.freq_offset_hz = params.freq_offset_hz;
+    demod_cfg.subcarrier_enabled =
+        cfg.get_bool("ggak.subcarrier_enabled", true);
     demod_cfg.target_sps =
         static_cast<int>(cfg.get_int("ggak.target_sps", 8));
     demod_cfg.rrc_taps = static_cast<int>(cfg.get_int("ggak.rrc_taps", 33));
@@ -55,7 +58,23 @@ bool GgakPipeline::configure(const Config& cfg, const PipelineParams& params) {
         params.sample_rate_hz > 0
             ? params.sample_rate_hz
             : static_cast<uint32_t>(cfg.get_int("ggak.sample_rate_hz", 3000000));
-    demod_.configure(demod_cfg, sample_rate);
+    use_psk_ = cfg.get_string("ggak.demod", "pm") == "psk";
+    if (use_psk_) {
+        dsp::DemodConfig pcfg;
+        pcfg.constellation = dsp::Constellation::BPSK;
+        pcfg.symbol_rate = demod_cfg.symbol_rate;
+        pcfg.rrc_alpha = demod_cfg.rrc_alpha;
+        pcfg.pll_bw = demod_cfg.pll_bw;
+        pcfg.max_sps = demod_cfg.target_sps;
+        pcfg.rrc_taps = demod_cfg.rrc_taps;
+        pcfg.freq_offset_hz = demod_cfg.freq_offset_hz;
+        pcfg.coarse_acq = cfg.get_bool("ggak.coarse_acq", false);
+        pcfg.coarse_acq_range_hz = std::fabs(demod_cfg.freq_offset_hz) + 100000.0;
+        pcfg.coarse_acq_fft = 16384;
+        psk_demod_.configure(pcfg, sample_rate);
+    } else {
+        demod_.configure(demod_cfg, sample_rate);
+    }
     parser_.reset();
     store_.configure(spool_dir_, rotate_seconds_);
 
@@ -119,7 +138,11 @@ void GgakPipeline::dsp_loop() {
         }
 
         soft.clear();
-        demod_.process(iq.data(), n, soft);
+        if (use_psk_) {
+            psk_demod_.process(iq.data(), n, soft);
+        } else {
+            demod_.process(iq.data(), n, soft);
+        }
 
         frames.clear();
         parser_.push(soft.data(), soft.size(), frames);
@@ -147,12 +170,13 @@ void GgakPipeline::publish_stats() {
     // decoder and the web UI without waiting for a 64 KB buffer.
     store_.flush();
 
-    const double snr = demod_.snr_db();
+    const double snr = use_psk_ ? psk_demod_.snr_db() : demod_.snr_db();
     const bool recent_frame =
         last_valid_frame_ != std::chrono::steady_clock::time_point{} &&
         (std::chrono::steady_clock::now() - last_valid_frame_) <
             std::chrono::seconds(5);
-    const bool locked = demod_.locked() && recent_frame;
+    const bool locked = (use_psk_ ? psk_demod_.locked() : demod_.locked()) &&
+                        recent_frame;
     const double ber = dsp::bpsk_ber_from_snr_db(snr);
 
     snr_db_.store(snr, std::memory_order_relaxed);
@@ -169,10 +193,19 @@ void GgakPipeline::publish_stats() {
     }
 }
 
+void GgakPipeline::constellation(std::vector<std::complex<float>>& out) const {
+    if (use_psk_) {
+        psk_demod_.constellation(out);
+    } else {
+        demod_.constellation(out);
+    }
+}
+
 PipelineStats GgakPipeline::stats() const {
     PipelineStats s;
     s.running = running_.load(std::memory_order_relaxed);
     s.locked = locked_.load(std::memory_order_relaxed);
+    s.demod_locked = use_psk_ ? psk_demod_.locked() : demod_.locked();
     s.ber = ber_.load(std::memory_order_relaxed);
     s.snr_db = snr_db_.load(std::memory_order_relaxed);
     s.cadus_total = cadus_total_.load(std::memory_order_relaxed);

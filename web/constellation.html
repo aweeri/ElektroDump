@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ElektroDump - Constellation</title>
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<header class="topbar" id="topbar"></header>
+<main>
+  <div class="grid two">
+    <section class="card">
+      <h2>Symbol cloud - I/Q after the carrier loop</h2>
+      <canvas id="constellation" width="520" height="520"></canvas>
+      <div class="muted" id="const-legend" style="margin-top:10px;font-family:var(--mono);font-size:12px">waiting for symbols…</div>
+    </section>
+
+    <section class="card">
+      <h2>Readout</h2>
+      <dl class="kv">
+        <dt>points</dt><dd id="const-count">-</dd>
+        <dt>rms</dt><dd id="const-rms">-</dd>
+        <dt>snr</dt><dd id="const-snr">-</dd>
+        <dt>sync</dt><dd id="const-lock">-</dd>
+        <dt>ber</dt><dd id="const-ber">-</dd>
+        <dt>mode</dt><dd id="const-mode">-</dd>
+      </dl>
+      <p class="muted" style="margin:18px 0 0;font-size:13px;line-height:1.55">
+        One dot per demodulated symbol, scaled by symbol rms. A tracking
+        Pm-BPSK link gives two lobes on the axis; four lobes mean OQPSK; a
+        ring means the carrier loop is not tracking; a diffuse blob means the
+        symbol timing is wrong.
+      </p>
+    </section>
+  </div>
+</main>
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/constellation.js"></script>
+</body>
+</html>

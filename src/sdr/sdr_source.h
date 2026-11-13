@@ -77,6 +77,9 @@ public:
     virtual bool start(IqSink sink) = 0;
     virtual void stop() = 0;
     virtual bool retune(uint64_t freq_hz) = 0;
+    // Change the sample rate on a running stream. The backend may quantise the
+    // request to a rate it supports; read back sample_rate_hz() afterwards.
+    virtual bool set_sample_rate(uint32_t rate_hz) = 0;
     virtual bool set_gain(int tenth_db) = 0;
     virtual SdrInfo info() const = 0;
     virtual SdrStats stats() const = 0;

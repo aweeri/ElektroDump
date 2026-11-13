@@ -1,4 +1,4 @@
-/* ElektroDump — thin REST helpers (M9). No external dependencies. */
+/* ElektroDump - thin REST helpers (M9). No external dependencies. */
 'use strict';
 
 window.ED = window.ED || {};

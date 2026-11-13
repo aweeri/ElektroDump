@@ -1,4 +1,4 @@
-/* ElektroDump — shared shell: nav, status pill, formatting, 1 Hz polling (M9). */
+/* ElektroDump - shared shell: nav, status pill, formatting, 1 Hz polling (M9). */
 'use strict';
 
 window.ED = window.ED || {};
@@ -9,19 +9,25 @@ ED.pages = [
   { key: 'schedule', href: '/schedule', label: 'Schedule' },
   { key: 'ggak', href: '/ggak', label: 'GGAK' },
   { key: 'system', href: '/system', label: 'System' },
-  { key: 'waterfall', href: '/waterfall', label: 'Waterfall' }
+  { key: 'waterfall', href: '/waterfall', label: 'Waterfall' },
+  { key: 'constellation', href: '/constellation', label: 'Constellation' }
 ];
 
 ED.esc = function (value) {
   const text = value === null || value === undefined ? '' : String(value);
-  return text.replace(/[&<>"']/g, function (ch) {
-    return { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[ch];
-  });
+  const entities = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  };
+  return text.replace(/[&<>"']/g, function (ch) { return entities[ch]; });
 };
 
 ED.fmt = function (value, digits) {
   if (value === null || value === undefined || isNaN(Number(value))) {
-    return '—';
+    return '-';
   }
   return Number(value).toFixed(digits === undefined ? 2 : digits);
 };
@@ -76,11 +82,41 @@ ED.setPage = function (key) {
   header.innerHTML =
     '<h1>Elektro<span>Dump</span></h1>' + nav +
     '<div class="status-pill">' +
-    '<span><span class="dot" id="pill-dot"></span> ' +
+    '<span><span class="dot nosync" id="pill-dot"></span> ' +
     '<span id="pill-mode">…</span></span>' +
-    '<span id="pill-snr">SNR —</span>' +
-    '<span id="pill-uptime">up —</span>' +
+    '<span id="pill-lock" class="lock nosync">not synced</span>' +
+    '<span id="pill-snr">SNR -</span>' +
+    '<span id="pill-uptime">up -</span>' +
     '</div>';
+};
+
+// One place decides the sync state, SatDump style: red = not synced, amber =
+// syncing (demodulator tracking, no frames yet), green = synced (frames
+// arriving). Every page that shows lock state goes through this so the views
+// cannot drift apart.
+// Modes are acronyms (GGAK, LRIT, HRIT). The daemon writes them lower case for
+// config keys; the interface should not.
+ED.modeLabel = function (name) {
+  const text = String(name || '');
+  return (text === 'ggak' || text === 'lrit' || text === 'hrit')
+    ? text.toUpperCase()
+    : text;
+};
+
+ED.lockState = function (pipeline) {
+  pipeline = pipeline || {};
+  const state = pipeline.locked
+    ? 'synced'
+    : (pipeline.demod_locked ? 'syncing' : 'nosync');
+  return {
+    state: state,
+    text: { synced: 'synced', syncing: 'syncing', nosync: 'not synced' }[state],
+  };
+};
+
+ED.lockHtml = function (pipeline) {
+  const lock = ED.lockState(pipeline);
+  return '<span class="lock ' + lock.state + '">' + lock.text + '</span>';
 };
 
 ED.applyStatus = function (status) {
@@ -89,12 +125,18 @@ ED.applyStatus = function (status) {
     const node = document.getElementById(id);
     if (node) { node.textContent = value; }
   };
-  setText('pill-mode', status.mode || '—');
+  setText('pill-mode', ED.modeLabel(status.mode) || '-');
   setText('pill-snr', 'SNR ' + ED.fmt(pipeline.snr_db, 1) + ' dB');
   setText('pill-uptime', 'up ' + ED.fmtDuration(status.uptime_seconds));
+  const lock = ED.lockState(pipeline);
   const dot = document.getElementById('pill-dot');
   if (dot) {
-    dot.className = 'dot ' + (pipeline.locked ? 'on' : 'off');
+    dot.className = 'dot ' + lock.state;
+  }
+  const lockNode = document.getElementById('pill-lock');
+  if (lockNode) {
+    lockNode.textContent = lock.text;
+    lockNode.className = 'lock ' + lock.state;
   }
 };
 

@@ -34,6 +34,8 @@ RES_SRC="${ED_RESOURCES:-$SRC_ROOT/resources}"
 CONFIG_EXAMPLE="${ED_CONFIG_EXAMPLE:-$SRC_ROOT/config/config.example.json}"
 UNIT_SRC="$SCRIPT_DIR/elektrodump.service"
 TMPFILES_SRC="$SCRIPT_DIR/elektrodump.tmpfiles"
+UDEV_RULES_NAME="99-elektrodump-sdr.rules"
+UDEV_RULES_SRC="$SCRIPT_DIR/$UDEV_RULES_NAME"
 
 DESTDIR="${DESTDIR:-}"
 STAGED=0
@@ -86,6 +88,14 @@ if [ "$STAGED" -eq 0 ]; then
             --no-create-home --shell /usr/sbin/nologin "$SERVICE_USER"
         log "created user $SERVICE_USER"
     fi
+    # The radio device nodes are group-owned by plugdev (99-elektrodump-sdr.rules);
+    # without this the service cannot open the SDR.
+    if getent group plugdev >/dev/null 2>&1; then
+        usermod -a -G plugdev "$SERVICE_USER"
+        log "added $SERVICE_USER to plugdev (SDR access)"
+    else
+        log "warning: no plugdev group; make sure $SERVICE_USER can open the SDR"
+    fi
 fi
 
 # --- binary + resources ----------------------------------------------------
@@ -121,6 +131,13 @@ install -d -m 0755 "$(rooted /etc/tmpfiles.d)"
 install -m 0644 "$TMPFILES_SRC" "$(rooted /etc/tmpfiles.d)/$TMPFILES_NAME"
 log "installed tmpfiles -> /etc/tmpfiles.d/$TMPFILES_NAME"
 
+# udev rule giving the (seat-less) service account access to the radio.
+if [ -f "$UDEV_RULES_SRC" ]; then
+    install -d -m 0755 "$(rooted /etc/udev/rules.d)"
+    install -m 0644 "$UDEV_RULES_SRC" "$(rooted /etc/udev/rules.d)/$UDEV_RULES_NAME"
+    log "installed udev rules -> /etc/udev/rules.d/$UDEV_RULES_NAME"
+fi
+
 # --- ownership + activation ------------------------------------------------
 if [ "$STAGED" -eq 0 ]; then
     chown -R "$SERVICE_USER:$SERVICE_GROUP" "$PREFIX"
@@ -128,6 +145,10 @@ if [ "$STAGED" -eq 0 ]; then
     chmod 0640 "$SYSCONF/config.json"
 
     systemd-tmpfiles --create "/etc/tmpfiles.d/$TMPFILES_NAME"
+    if [ -f "$UDEV_RULES_SRC" ]; then
+        udevadm control --reload-rules || true
+        udevadm trigger --action=add --subsystem-match=usb || true
+    fi
     systemctl daemon-reload
     systemctl enable --now "$UNIT_NAME"
     log "service enabled and started"

@@ -118,6 +118,20 @@ sdr::SdrConfig App::sdr_config() const {
     cfg.mock_ggak_carrier_offset_hz =
         config_.get_double("ggak.mock.carrier_offset_hz", 0.0);
 
+    // Wideband capture: hold the radio at one fixed centre/rate so a single
+    // capture serves every downlink; each pipeline shifts its own carrier down
+    // digitally (see PipelineParams::freq_offset_hz).
+    const long long wideband_hz = config_.get_int("sdr.wideband_hz", 0);
+    if (wideband_hz > 0) {
+        cfg.center_freq_hz = static_cast<uint64_t>(
+            config_.get_int("sdr.wideband_center_hz", 1692000000));
+        cfg.sample_rate_hz = static_cast<uint32_t>(wideband_hz);
+        cfg.mock_ggak = config_.get_bool("sdr.mock.ggak", false);
+        cfg.mock_lrit = config_.get_bool("sdr.mock.lrit", false);
+        cfg.mock_hrit = config_.get_bool("sdr.mock.hrit", false);
+        return cfg;
+    }
+
     if (mode_ == PipelineMode::GGAK) {
         cfg.center_freq_hz = static_cast<uint64_t>(
             config_.get_int("frequencies.ggak_hz", 1693000000));
@@ -237,6 +251,18 @@ void App::start_pipeline(PipelineMode mode,
         }
     }
 
+    // The device's real rate wins: a backend may have quantised the request.
+    if (sdr_ != nullptr && active_sample_rate_hz_ != 0) {
+        params.sample_rate_hz = active_sample_rate_hz_;
+    }
+    // Where the carrier sits relative to the radio's centre: zero when the SDR
+    // was retuned to it, non-zero for a shared wideband capture.
+    if (sdr_ != nullptr) {
+        params.freq_offset_hz =
+            static_cast<double>(params.center_freq_hz) -
+            static_cast<double>(sdr_->center_freq_hz());
+    }
+
     if (mode == PipelineMode::GGAK) {
         pipeline_ = std::make_unique<GgakPipeline>();
     } else {
@@ -280,8 +306,10 @@ void App::start_pipeline(PipelineMode mode,
 
 void App::switch_mode(PipelineMode mode,
                       const scheduler::ScheduleEntry* entry) {
-    if (sdr_ != nullptr) {
-        uint64_t freq = 0;
+    uint64_t freq = 0;
+    uint32_t wanted_rate = 0;
+    const bool wideband = config_.get_int("sdr.wideband_hz", 0) > 0;
+    if (sdr_ != nullptr && !wideband) {
         if (entry != nullptr && entry->frequency_hz != 0) {
             freq = entry->frequency_hz;
         } else {
@@ -292,8 +320,37 @@ void App::switch_mode(PipelineMode mode,
                                          : "frequencies.lrit_hz");
             freq = static_cast<uint64_t>(config_.get_int(key, 0));
         }
+        if (entry != nullptr && entry->sample_rate_hz != 0) {
+            wanted_rate = entry->sample_rate_hz;
+        } else {
+            const char* sec = mode == PipelineMode::GGAK
+                                  ? "ggak"
+                                  : (mode == PipelineMode::HRIT ? "hrit" : "lrit");
+            const long long def = mode == PipelineMode::GGAK
+                                      ? 3000000LL
+                                      : (mode == PipelineMode::HRIT ? 6000000LL
+                                                                    : 1000000LL);
+            wanted_rate = static_cast<uint32_t>(
+                config_.get_int(std::string(sec) + ".sample_rate_hz", def));
+        }
         if (freq != 0) {
             sdr_->retune(freq);
+        }
+        // Every mode has its own sample rate (GGAK 3, LRIT 1, HRIT 6 MSPS). The
+        // device may only offer a coarser set, so trust the rate it reports and
+        // configure the pipeline with that, not with the request.
+        if (wanted_rate != 0 && wanted_rate != sdr_->sample_rate_hz()) {
+            if (!sdr_->set_sample_rate(wanted_rate)) {
+                ED_LOG(Warn, "sdr")
+                    << "could not set " << wanted_rate << " sps for mode "
+                    << pipeline_mode_name(mode) << ": " << sdr_->stats().last_error
+                    << " (staying at " << sdr_->sample_rate_hz() << " sps)";
+            }
+        }
+        active_sample_rate_hz_ = sdr_->sample_rate_hz();
+        waterfall_.set_sample_rate(active_sample_rate_hz_);
+        if (freq != 0) {
+            waterfall_.set_center(freq);
         }
     }
     start_pipeline(mode, entry);
@@ -351,12 +408,15 @@ int App::run_loop(bool with_sdr) {
             ED_LOG(Error, "sdr") << sdr_error_;
             sdr_.reset();
         } else {
+            active_sample_rate_hz_ = sdr_->sample_rate_hz();
             const std::size_t fft_size = static_cast<std::size_t>(
                 config_.get_int("performance.fft_size", 1024));
             const int fft_rate =
                 static_cast<int>(config_.get_int("performance.fft_rate_hz", 10));
             waterfall_.configure(fft_size, fft_rate, scfg.sample_rate_hz,
-                                 scfg.center_freq_hz);
+                                 scfg.center_freq_hz,
+                                 static_cast<int>(config_.get_int(
+                                     "performance.fft_average", 8)));
             // The waterfall consumes the fan-out ring, not the primary IQ ring.
             waterfall_.start(&waterfall_ring_);
 
@@ -421,7 +481,17 @@ int App::run_loop(bool with_sdr) {
     ctx.scheduler = scheduler_.get();
     ctx.cadu = cadu_.get();
     ctx.ggak = ggak_science_.get();
+    snr_history_ = std::make_unique<web::SnrHistory>(1800);
+    ctx.snr_history = snr_history_.get();
     ctx.webhook = webhook_.get();
+    ctx.constellation = [this](std::vector<std::complex<float>>& out) {
+        std::lock_guard<std::mutex> lock(pipeline_mutex_);
+        if (pipeline_ != nullptr) {
+            pipeline_->constellation(out);
+        } else {
+            out.clear();
+        }
+    };
     ctx.pipeline_snapshot = [this]() -> web::PipelineSnapshot {
         std::lock_guard<std::mutex> lock(pipeline_mutex_);
         web::PipelineSnapshot snap;
@@ -461,8 +531,30 @@ int App::run_loop(bool with_sdr) {
     std::signal(SIGTERM, handle_signal);
 
     ED_LOG(Info, "app") << "running; press Ctrl-C to stop";
+    int history_ticks = 0;
+    bool history_started = false;
     while (!stop_requested_.load(std::memory_order_relaxed)) {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        // One SNR sample per second keeps the chart's step simple and lets the
+        // page show history the moment it opens.
+        if (++history_ticks >= 5) {
+            history_ticks = 0;
+            if (snr_history_) {
+                float snr = 0.0f;
+                if (pipeline_) {
+                    snr = static_cast<float>(pipeline_->stats().snr_db);
+                }
+                // The first seconds after start report 0 dB before the
+                // demodulator has produced anything; those would drag the
+                // chart's average down for 15 minutes.
+                if (snr > 0.0f) {
+                    history_started = true;
+                }
+                if (history_started) {
+                    snr_history_->push(snr, static_cast<int>(mode_));
+                }
+            }
+        }
     }
 
     ED_LOG(Info, "app") << "stop requested; shutting down";

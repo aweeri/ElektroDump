@@ -32,6 +32,7 @@ public:
     void start() override;
     void stop() override;
     PipelineStats stats() const override;
+    void constellation(std::vector<std::complex<float>>& out) const override;
 
     double snr_db() const { return snr_db_.load(std::memory_order_relaxed); }
     const std::string& output_dir() const { return output_dir_; }

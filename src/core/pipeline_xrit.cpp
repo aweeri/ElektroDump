@@ -35,6 +35,7 @@ bool XritPipeline::configure(const Config& cfg, const PipelineParams& params) {
 
     dsp::DemodConfig demod_cfg;
     demod_cfg.constellation = dsp::constellation_from_string(params.constellation);
+    demod_cfg.freq_offset_hz = params.freq_offset_hz;
     demod_cfg.symbol_rate = params.symbol_rate > 0.0
                                 ? params.symbol_rate
                                 : cfg.get_double(std::string(section) + ".symbol_rate",
@@ -45,6 +46,8 @@ bool XritPipeline::configure(const Config& cfg, const PipelineParams& params) {
     demod_cfg.pll_bw = params.pll_bw > 0.0
                            ? params.pll_bw
                            : cfg.get_double(std::string(section) + ".pll_bw", 0.0145);
+    demod_cfg.costas_bw =
+        cfg.get_double(std::string(section) + ".costas_bw", 0.004);
     demod_cfg.rrc_taps = static_cast<int>(cfg.get_int("decode.rrc_taps", 33));
     // Coarse carrier acquisition: on by default for HRIT, where a realistic
     // LNB/LO offset exceeds the Costas loop's pull-in range.
@@ -68,7 +71,10 @@ bool XritPipeline::configure(const Config& cfg, const PipelineParams& params) {
     fec_cfg.rs_interleave = params.rs_interleave;
     fec_cfg.rs_enabled = params.rs_interleave > 0;
     fec_cfg.rs_usecheck = params.rs_usecheck;
-    fec_cfg.rs_dual_basis = cfg.get_bool("decode.rs_dualbasis", false);
+    // CCSDS RS transmits in the dual basis; SatDump defaults this to true and real
+    // LRIT recordings only decode with it on (13/120 frames had all-zero
+    // syndromes with the dual-basis conversion, 0/120 without).
+    fec_cfg.rs_dual_basis = cfg.get_bool("decode.rs_dualbasis", true);
     fec_cfg.viterbi_ber_threshold =
         cfg.get_double("decode.viterbi_ber_threshold", 0.30);
     fec_cfg.viterbi_outsync_after =
@@ -201,10 +207,15 @@ void XritPipeline::publish_stats() {
     }
 }
 
+void XritPipeline::constellation(std::vector<std::complex<float>>& out) const {
+    demod_.constellation(out);
+}
+
 PipelineStats XritPipeline::stats() const {
     PipelineStats s;
     s.running = running_.load(std::memory_order_relaxed);
     s.locked = locked_.load(std::memory_order_relaxed);
+    s.demod_locked = demod_.locked();
     s.ber = ber_.load(std::memory_order_relaxed);
     s.snr_db = snr_db_.load(std::memory_order_relaxed);
     s.cadus_total = cadus_total_.load(std::memory_order_relaxed);

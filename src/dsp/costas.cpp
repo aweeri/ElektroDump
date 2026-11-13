@@ -56,7 +56,13 @@ void CostasLoop::process(const std::complex<float>* in, std::size_t n,
 
         double error = 0.0;
         if (order_ == 2) {
-            error = mixed_re * mixed_im;
+            // BPSK: the detector must use the *decision* (sign of the in-phase
+            // rail), i.e. sign(I)*Q. Using I*Q makes the error flip sign with
+            // every symbol, so it averages to zero and the loop never locks: the
+            // constellation just circles. (QPSK's four-quadrant detector below
+            // is decision-directed already, which is why only BPSK was broken.)
+            const double sign_re = (mixed_re > 0.0) ? 1.0 : -1.0;
+            error = sign_re * mixed_im;
         } else {
             const double sign_re = (mixed_re > 0.0) ? 1.0 : -1.0;
             const double sign_im = (mixed_im > 0.0) ? 1.0 : -1.0;

@@ -1,4 +1,4 @@
-/* ElektroDump — GGAK science page (M9). */
+/* ElektroDump - GGAK science page (M9). */
 'use strict';
 
 (function () {
@@ -39,10 +39,10 @@
     const rows = document.getElementById('ggak-rows');
     rows.innerHTML = channels.map(function (channel) {
       return '<tr><td class="mono">' + ED.esc(channel.name) + '</td>' +
-        '<td>' + ED.esc(channel.unit || '—') + '</td>' +
-        '<td class="mono">' + (channel.has_value ? ED.fmt(channel.latest, 2) : '—') + '</td>' +
-        '<td class="mono muted">' + ED.esc(channel.time || '—') + '</td>' +
-        '<td class="mono">' + (channel.count || 0) + '</td></tr>';
+        '<td>' + ED.esc(channel.unit || '-') + '</td>' +
+        '<td class="mono num">' + (channel.has_value ? ED.fmt(channel.latest, 2) : '-') + '</td>' +
+        '<td class="mono muted">' + ED.esc(channel.time || '-') + '</td>' +
+        '<td class="mono num">' + (channel.count || 0) + '</td></tr>';
     }).join('');
   }
 

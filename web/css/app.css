@@ -1,38 +1,76 @@
-/* ElektroDump web UI — single dependency-free stylesheet (M9). */
+/* ElektroDump web UI - single dependency-free stylesheet.
+   Instrument-panel surface: warm charcoal bezel, bone type, one petrol accent
+   for data, and three dedicated inks for sync state so status never competes
+   with the traces. Fonts are self-hosted because the station must render the
+   same on a LAN with no uplink. */
+
+@font-face {
+  font-family: "Plex Mono";
+  src: url("/fonts/mono-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Plex Mono";
+  src: url("/fonts/mono-500.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Plex Sans";
+  src: url("/fonts/sans-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Plex Sans";
+  src: url("/fonts/sans-600.woff2") format("woff2");
+  font-weight: 600;
+  font-display: swap;
+}
+
 :root {
-  color-scheme: dark;
-  --bg: #0b0f14;
-  --panel: #111823;
-  --panel-2: #16202d;
-  --border: #1e2a38;
-  --fg: #d7e0ea;
-  --muted: #7f93a8;
-  --accent: #4fd1c5;
-  --warn: #e6b450;
-  --error: #ef6b6b;
-  --ok: #6bd47f;
-  --radius: 8px;
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+  /* Paper: white ground, ink type, grey rules, one petrol accent. */
+  --bg: #ffffff;
+  --panel: #ffffff;
+  --panel-2: #f5f6f6;
+  --rule: #dbdfe1;
+  --rule-soft: #ecedee;
+  --fg: #14171a;
+  --muted: #6b7280;
+  --accent: #1c6469;
+  --accent-dim: #a7c3c6;
+  --ok: #2f7a3f;
+  --warn: #8a5f00;
+  --error: #b0392c;
+  --mono: "Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: "Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 * { box-sizing: border-box; }
 
+html { background: var(--bg); }
+
 body {
   margin: 0;
-  font: 14px/1.45 var(--sans);
+  font: 14px/1.5 var(--sans);
   background: var(--bg);
   color: var(--fg);
+  -webkit-font-smoothing: antialiased;
 }
+
+/* --- top rail ------------------------------------------------------------ */
 
 header.topbar {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 22px;
   flex-wrap: wrap;
-  padding: 10px 16px;
+  padding: 0 28px;
+  min-height: 54px;
   background: var(--panel);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--rule);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -40,128 +78,419 @@ header.topbar {
 
 header.topbar h1 {
   margin: 0;
-  font-size: 15px;
-  letter-spacing: .04em;
+  font: 500 13px/1 var(--mono);
+  letter-spacing: .16em;
+  text-transform: uppercase;
   white-space: nowrap;
+  color: var(--fg);
 }
 
-header.topbar h1 span { color: var(--accent); }
+/* The wordmark is one colour now; the split-tone version was decoration. */
+header.topbar h1 span { color: inherit; }
 
-nav.pages { display: flex; gap: 4px; flex-wrap: wrap; }
+nav.pages { display: flex; gap: 20px; flex-wrap: wrap; }
 
 nav.pages a {
   color: var(--muted);
   text-decoration: none;
-  padding: 5px 10px;
-  border-radius: var(--radius);
-  font-size: 13px;
+  font: 400 13px/1 var(--sans);
+  padding: 19px 0 17px;
+  border-bottom: 2px solid transparent;
 }
-
-nav.pages a:hover { background: var(--panel-2); color: var(--fg); }
-nav.pages a.active { background: var(--panel-2); color: var(--accent); }
+nav.pages a:hover { color: var(--fg); }
+nav.pages a.active {
+  color: var(--fg);
+  border-bottom-color: var(--accent);
+}
 
 .status-pill {
   margin-left: auto;
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--muted);
   display: flex;
-  gap: 12px;
   align-items: center;
+  gap: 0;
+  font: 400 12px/1 var(--mono);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
+.status-pill > span {
+  padding: 0 12px;
+  border-left: 1px solid var(--rule);
+}
+.status-pill > span:first-child { border-left: 0; padding-left: 0; }
 
-.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+  display: inline-block;
+  vertical-align: 1px;
+}
+.dot.synced { background: var(--ok); }
+.dot.syncing { background: var(--warn); }
+.dot.nosync { background: var(--error); }
 .dot.on { background: var(--ok); }
 .dot.off { background: var(--error); }
 
-main { padding: 16px; display: grid; gap: 16px; max-width: 1200px; margin: 0 auto; }
+.lock { font-weight: 500; letter-spacing: .02em; }
+.lock.synced { color: var(--ok); }
+.lock.syncing { color: var(--warn); }
+.lock.nosync { color: var(--error); }
 
-.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+/* --- page frame ---------------------------------------------------------- */
+
+main {
+  padding: 26px 28px 48px;
+  display: grid;
+  gap: 26px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.grid { display: grid; gap: 26px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.grid.two { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
 
 .card {
   background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 12px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 18px 20px 20px;
   min-width: 0;
 }
 
-.card h2 {
-  margin: 0 0 10px;
-  font-size: 12px;
+.card > h2 {
+  margin: 0 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--rule-soft);
+  font: 500 10px/1 var(--mono);
+  letter-spacing: .18em;
   text-transform: uppercase;
-  letter-spacing: .06em;
   color: var(--muted);
 }
 
-.card img { max-width: 100%; display: block; border-radius: 6px; background: #060a0f; }
+.card h2.inline { border: 0; padding: 0; margin: 22px 0 10px; }
+.card img { max-width: 100%; display: block; background: var(--panel-2); border: 1px solid var(--rule-soft); }
 
-.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13px; }
-.kv dt { color: var(--muted); }
-.kv dd { margin: 0; font-family: var(--mono); text-align: right; }
+/* --- readouts ------------------------------------------------------------ */
 
-.big { font-family: var(--mono); font-size: 26px; color: var(--accent); }
+.kv {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 7px 14px;
+  font: 400 13px/1.35 var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.kv dt, .kv > span:nth-child(odd) { color: var(--muted); }
+.kv dd, .kv > span:nth-child(even) { margin: 0; text-align: right; }
+
+.big {
+  font: 500 54px/0.95 var(--mono);
+  letter-spacing: -.02em;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+.big small {
+  font: 400 13px/1 var(--mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-left: 10px;
+  vertical-align: baseline;
+}
+
+/* The link bar: one oversized figure and a strip of secondary readouts. */
+.linkbar {
+  display: grid;
+  grid-template-columns: minmax(190px, auto) minmax(0, 1fr);
+  gap: 26px;
+  align-items: end;
+}
+.linkbar .stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 30px;
+  padding-bottom: 6px;
+}
+.linkbar .stat { min-width: 92px; }
+.linkbar .stat b {
+  display: block;
+  font: 500 15px/1.3 var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+.linkbar .stat i {
+  display: block;
+  font: 400 10px/1.6 var(--mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  font-style: normal;
+  color: var(--muted);
+}
+
+#constellation { max-width: 620px; }
+
+/* Fixed CSS height: the canvas attribute is the *backing store* and gets
+   rewritten for device pixels. Reading it back as the layout height makes the
+   element grow on every redraw. */
+#spark { height: 88px; }
+/* The waterfall's own floor colour, so an idle band still reads as a band. */
+#waterfall { background: #e8ecee; }
+
+canvas {
+  width: 100%;
+  display: block;
+  border: 1px solid var(--rule-soft);
+  background: transparent;
+}
+
+.scope { display: grid; grid-template-columns: 42px minmax(0, 1fr); column-gap: 10px; }
+.scope-y { position: relative; height: 132px; }
+.scope-y span {
+  position: absolute; right: 6px; transform: translateY(-50%);
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+}
+.scope-plot { position: relative; min-width: 0; }
+.scope-plot canvas { display: block; width: 100%; }
+#spectrum { border-bottom: 1px solid var(--rule); }
+#scope-overlay { position: absolute; left: 0; top: 0; pointer-events: none; }
+.scope-x {
+  display: flex; justify-content: space-between;
+  margin-top: 7px;
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+}
+.scope-read {
+  margin-top: 12px; min-height: 1.5em;
+  font-family: var(--mono); font-size: 11.5px; color: var(--fg);
+}
+
+.timeline { margin: 0 0 18px; }
+.timeline svg { width: 100%; height: auto; display: block; }
+
+/* Read-only timetable: mono, one pair per line, no boxes. */
+.tl-list { margin: 0 0 14px; display: grid; gap: 6px; font-family: var(--mono); font-size: 12px; }
+.tl-list div { display: grid; grid-template-columns: 4.5rem 1fr; gap: 10px; }
+.tl-list dt { color: var(--accent); letter-spacing: .12em; }
+.tl-list dd { margin: 0; color: var(--fg); }
+
+.figcap { margin: 10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+/* A 24-hour axis squeezed into a phone width renders its 9px labels at 4px.
+   Below 700px the same information is carried by the list underneath. */
+@media (max-width: 700px) {
+  .timeline { display: none; }
+}
 
 pre {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
-  font-family: var(--mono);
-  font-size: 12px;
+  font: 400 12px/1.55 var(--mono);
+  color: var(--muted);
 }
 
-canvas { width: 100%; display: block; background: #060a0f; border-radius: 6px; }
+/* --- tables -------------------------------------------------------------- */
 
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
-th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font: 400 13px/1.4 var(--sans);
+  font-variant-numeric: tabular-nums;
+}
+th, td {
+  text-align: left;
+  padding: 9px 10px 9px 0;
+  border-bottom: 1px solid var(--rule-soft);
+  vertical-align: baseline;
+}
+th {
+  color: var(--muted);
+  font: 500 10px/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  border-bottom-color: var(--rule);
+}
 td.mono, th.mono { font-family: var(--mono); }
+
+/* Editable cells read as values until you touch them, not as a grid of boxes. */
+table input, table select {
+  background: transparent;
+  border-color: transparent;
+  border-bottom: 1px solid var(--rule-soft);
+  border-radius: 0;
+  padding: 3px 4px;
+  width: 100%;
+}
+table input:hover, table select:hover { border-bottom-color: var(--rule); }
+table input:focus, table select:focus {
+  background: var(--panel-2);
+  border-bottom-color: var(--accent);
+  outline: none;
+}
+td.num { text-align: right; font-family: var(--mono); }
 tr:hover td { background: var(--panel-2); }
 
+/* --- controls ------------------------------------------------------------ */
+
 input, select, button {
-  font: inherit;
+  font: 400 13px/1 var(--mono);
   color: var(--fg);
   background: var(--panel-2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 7px 9px;
+}
+input:focus, select:focus, button:focus { outline: 1px solid var(--accent-dim); outline-offset: 1px; }
+button { cursor: pointer; }
+button:hover { border-color: var(--accent-dim); color: var(--fg); }
+button.primary { background: #e8f1f1; border-color: var(--accent); color: var(--accent); }
+button.danger { background: #fbeeec; border-color: #e0b7b0; color: var(--error); }
+/* Row actions are words, not buttons. The colour carries the warning. */
+table button.danger {
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted);
+  padding: 4px 0;
+}
+table button.danger:hover { color: var(--error); border-color: transparent; background: transparent; }
+
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.row > label { color: var(--muted); font: 400 11px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+
+.toolbar {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 16px;
 }
 
-button { cursor: pointer; }
-button:hover { border-color: var(--accent); }
-button.primary { background: #12403c; border-color: #1f6f66; }
-button.danger { background: #3a1a1a; border-color: #6f2a2a; }
+/* --- gallery ------------------------------------------------------------- */
 
-.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.row > label { color: var(--muted); font-size: 12px; }
-
-.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }
-
-.gallery-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
-.thumb { cursor: pointer; background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-.thumb img { width: 100%; height: 150px; object-fit: cover; background: #060a0f; }
-.thumb .meta { padding: 6px 8px; font-size: 12px; }
-.thumb .meta .name { font-family: var(--mono); color: var(--accent); }
+.gallery-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+}
+.thumb {
+  cursor: pointer;
+  background: var(--panel-2);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.thumb:hover { border-color: var(--accent-dim); }
+.thumb img { width: 100%; height: 150px; object-fit: cover; background: var(--panel-2); }
+.thumb .meta { padding: 9px 11px; font: 400 12px/1.5 var(--sans); }
+.thumb .meta .name { display: block; font-family: var(--mono); color: var(--fg); }
 
 .muted { color: var(--muted); }
-.empty { color: var(--muted); font-style: italic; padding: 8px 0; }
+.empty { color: var(--muted); padding: 6px 0; font-style: normal; }
+
+/* Placeholder that fills the space on purpose: better than a void that reads
+   as a broken image. */
+.emptybox {
+  border: 1px solid var(--rule-soft);
+  min-height: 168px;
+  padding: 18px;
+  display: flex;
+  align-items: flex-end;
+  color: var(--muted);
+  font: 400 12px/1.5 var(--mono);
+}
 
 #toast {
   position: fixed;
-  bottom: 16px;
-  right: 16px;
-  max-width: 360px;
-  background: #3a1a1a;
-  border: 1px solid #6f2a2a;
-  color: #ffd9d9;
-  padding: 10px 12px;
-  border-radius: var(--radius);
-  font-size: 13px;
+  bottom: 20px;
+  right: 20px;
+  max-width: 380px;
+  background: #fbeeec;
+  border: 1px solid #e0b7b0;
+  color: var(--error);
+  padding: 11px 14px;
+  border-radius: 2px;
+  font: 400 13px/1.45 var(--sans);
   display: none;
   z-index: 50;
 }
 #toast.show { display: block; }
 
+@media (max-width: 820px) {
+  .grid.two { grid-template-columns: minmax(0, 1fr); }
+  .linkbar { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+}
+
 @media (max-width: 640px) {
-  .status-pill { width: 100%; margin-left: 0; }
+  /* Two compact rows: wordmark + sync pill, then a scrolling page strip.
+     Keeping the pill beside the wordmark saves a whole row of chrome. */
+  header.topbar { padding: 11px 16px 0; gap: 10px 12px; min-height: 0; }
+  header.topbar h1 { font-size: 12px; letter-spacing: .13em; }
+  .status-pill {
+    order: 2;
+    margin-left: auto;
+    width: auto;
+    padding-bottom: 0;
+    font-size: 11px;
+  }
+  .status-pill > span { padding: 0 8px; }
+  .status-pill > span:first-child { padding-left: 0; }
+  .status-pill > span:last-child { display: none; }  /* uptime is desk furniture */
+
+  nav.pages {
+    order: 3;
+    flex-basis: 100%;
+    gap: 18px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin: 0 -16px;
+    padding: 0 16px;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(90deg, #000 84%, transparent 100%);
+    mask-image: linear-gradient(90deg, #000 84%, transparent 100%);
+  }
+  nav.pages::-webkit-scrollbar { display: none; }
+  nav.pages a { padding: 12px 0 10px; font-size: 13px; }
+
+  main { padding: 16px 16px 40px; gap: 16px; }
+  .card { padding: 14px 15px 16px; }
+  .card > h2 { margin-bottom: 12px; }
+
+  /* Readouts become a two-column block with each value on its own line, so the
+     ragged "minus above a label, odd column" wrap goes away. */
+  .linkbar { gap: 16px; }
+  .big { font-size: 44px; }
+  .linkbar .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 18px;
+    padding-bottom: 0;
+  }
+  .linkbar .stat { min-width: 0; }
+  /* The next-window value is a sentence, not a number: give it the full width
+     instead of wrapping it inside a half-column. */
+  .linkbar .stat:last-child { grid-column: 1 / -1; }
+  .linkbar .stat:nth-last-child(2) { grid-column: 1 / -1; }
+  .linkbar .stat b { font-size: 14px; overflow-wrap: anywhere; }
+  .linkbar .stat i { font-size: 9px; letter-spacing: .12em; }
+
+  #spark { height: 72px; }
+  .emptybox { min-height: 92px; padding: 12px; }
+  .kv { font-size: 12px; gap: 6px 10px; }
+  .kv dd, .kv > span:nth-child(even) { overflow-wrap: anywhere; }
+  table { font-size: 12px; }
+  th, td { padding: 8px 8px 8px 0; }
+
+  /* Wide tables scroll inside their card instead of crushing every column into
+     a 390px viewport. The card frame stays put; only the table moves. */
+  .card > table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+  .card > table > thead,
+  .card > table > tbody {
+    display: table;
+    width: 100%;
+    min-width: 620px;
+    table-layout: auto;
+  }
 }

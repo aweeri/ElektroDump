@@ -48,11 +48,18 @@ public:
     // checked first, so it acts as a catch-all for sub-paths.
     void get_prefix(const std::string& prefix, Handler handler);
 
+    // Public mode: refuse anything that is not a read. Handlers stay registered
+    // so the routes still answer GET, but no request can mutate the station.
+    void set_read_only(bool value) { read_only_ = value; }
+    bool read_only() const { return read_only_; }
+
     HttpResponse handle(const HttpRequest& req) const;
     bool has(const std::string& method, const std::string& path) const;
     std::size_t size() const { return routes_.size(); }
 
 private:
+    bool read_only_ = false;
+
     struct Route {
         std::string method;
         std::string path;

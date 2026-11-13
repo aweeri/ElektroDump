@@ -17,6 +17,10 @@ Wants=network-online.target
 Type=simple
 User=elektrodump
 Group=elektrodump
+# The SDR device nodes are group-owned by plugdev (see
+# deploy/99-elektrodump-sdr.rules). A system service has no login seat, so the
+# packages' TAG+="uaccess" rule alone does not grant access to the radio.
+SupplementaryGroups=plugdev
 WorkingDirectory=/opt/elektrodump
 ExecStart=/opt/elektrodump/elektrodump run --config /etc/elektrodump/config.json
 Restart=always

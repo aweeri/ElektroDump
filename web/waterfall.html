@@ -3,21 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ElektroDump — Waterfall</title>
+<title>ElektroDump - Spectrum</title>
 <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
 <header class="topbar" id="topbar"></header>
 <main>
-  <div class="card">
-    <h2>Spectrum</h2>
-    <canvas id="spectrum" width="1024" height="200"></canvas>
-    <div class="muted" id="wf-status" style="margin-top:8px">waiting for spectrum…</div>
-  </div>
-  <div class="card">
-    <h2>Waterfall</h2>
-    <canvas id="waterfall" width="1024" height="200"></canvas>
-  </div>
+  <section class="card">
+    <h2 id="wf-title">Spectrum and waterfall</h2>
+    <div class="scope">
+      <div class="scope-y" id="scope-y"></div>
+      <div class="scope-plot" id="scope-plot">
+        <canvas id="spectrum" height="132"></canvas>
+        <canvas id="waterfall" height="300"></canvas>
+        <div class="scope-x" id="scope-x"></div>
+      </div>
+    </div>
+    <div class="scope-read" id="scope-read">point at the plot to read level and frequency</div>
+  </section>
 </main>
 <script src="/js/api.js"></script>
 <script src="/js/app.js"></script>

@@ -1,4 +1,4 @@
-/* ElektroDump — product gallery (M9). */
+/* ElektroDump - product gallery (M9). */
 'use strict';
 
 (function () {

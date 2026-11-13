@@ -123,7 +123,13 @@ json::Value sdr_json(const WebContext& ctx) {
         sdr.set("available", json::Value(true));
         sdr.set("driver", json::Value(info.driver));
         sdr.set("name", json::Value(info.name));
-        sdr.set("serial", json::Value(info.serial));
+        // The serial identifies the hardware; it is not needed by any view and
+        // does not belong on a publicly reachable page.
+        const bool public_mode = ctx.config != nullptr &&
+                                 ctx.config->get_bool("web.public", false);
+        if (!public_mode) {
+            sdr.set("serial", json::Value(info.serial));
+        }
         sdr.set("center_freq_hz",
                 json::Value(static_cast<int64_t>(ctx.sdr->center_freq_hz())));
         sdr.set("sample_rate_hz",
@@ -167,6 +173,7 @@ json::Value pipeline_json(const WebContext& ctx) {
     const PipelineStats ps = pipeline_stats(ctx, present);
     pipeline.set("state", json::Value(ps.running ? "running" : "idle"));
     pipeline.set("locked", json::Value(ps.locked));
+    pipeline.set("demod_locked", json::Value(ps.demod_locked));
     pipeline.set("ber", json::Value(ps.ber));
     pipeline.set("snr_db", json::Value(ps.snr_db));
     pipeline.set("cadus_total",
@@ -183,6 +190,7 @@ json::Value pipeline_json(const WebContext& ctx) {
             pipeline.set("snr_db", json::Value(m.snr_db));
             pipeline.set("ber", json::Value(m.ber));
             pipeline.set("locked", json::Value(m.locked));
+        pipeline.set("demod_locked", json::Value(m.locked));
         }
     }
     return pipeline;
@@ -226,6 +234,9 @@ void register_status_api(Router& router, const WebContext& ctx) {
     router.get("/api/v1/status", [&ctx](const HttpRequest&) {
         json::Value root;
         root.set("version", json::Value(kVersion));
+        // Lets the UI hide controls that would only return 405 on a public host.
+        root.set("public", json::Value(ctx.config != nullptr &&
+                                           ctx.config->get_bool("web.public", false)));
         root.set("uptime_seconds",
                  json::Value(static_cast<int64_t>(uptime_seconds(ctx))));
         root.set("satellite", json::Value(ctx.satellite));

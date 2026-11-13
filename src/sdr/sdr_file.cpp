@@ -77,6 +77,14 @@ public:
         return true;
     }
 
+    // The file carries no inherent rate: it is replayed at whatever rate the
+    // consumer assumes, so adopting a new rate is all a switch needs.
+    bool set_sample_rate(uint32_t rate_hz) override {
+        rate_.store(rate_hz, std::memory_order_relaxed);
+        cfg_.sample_rate_hz = rate_hz;
+        return true;
+    }
+
     bool set_gain(int tenth_db) override {
         gain_.store(tenth_db, std::memory_order_relaxed);
         return true;

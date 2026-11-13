@@ -18,6 +18,7 @@
 #include "scheduler/cadu_lifecycle.h"
 #include "scheduler/scheduler.h"
 #include "sdr/sdr_source.h"
+#include "web/snr_history.h"
 #include "web/web_server.h"
 #include "web/webhook.h"
 
@@ -76,6 +77,10 @@ private:
     bool initialized_ = false;
 
     std::unique_ptr<sdr::ISdrSource> sdr_;
+    // Sample rate actually in effect on the device (a backend may quantise the
+    // requested rate to one it supports), so pipelines are configured with what
+    // the radio is really producing.
+    uint32_t active_sample_rate_hz_ = 0;
     SpscRing<std::complex<float>> iq_ring_{262144};
     // Demod fans IQ out to this ring for the FFT/waterfall producer.
     SpscRing<std::complex<float>> waterfall_ring_{262144};
@@ -94,6 +99,8 @@ private:
     // In-memory GGAK science series + the product-created webhook.
     std::unique_ptr<ggak::GgakScienceStore> ggak_science_;
     std::unique_ptr<web::WebhookDispatcher> webhook_;
+    // One-second SNR ring behind /api/v1/history/snr.
+    std::unique_ptr<web::SnrHistory> snr_history_;
 
     // pipeline_mutex_ serialises mode switches against run_loop startup/shutdown.
     std::mutex pipeline_mutex_;

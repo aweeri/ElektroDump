@@ -144,6 +144,9 @@ bool Router::has(const std::string& method, const std::string& path) const {
 }
 
 HttpResponse Router::handle(const HttpRequest& req) const {
+    if (read_only_ && req.method != "GET" && req.method != "HEAD") {
+        return HttpResponse::error(405, "read_only");
+    }
     const std::string norm = normalize_path(req.path);
     bool path_matched = false;
     for (const Route& route : routes_) {

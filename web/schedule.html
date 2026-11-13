@@ -3,37 +3,35 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ElektroDump — Schedule</title>
+<title>ElektroDump - Passes</title>
 <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
 <header class="topbar" id="topbar"></header>
 <main>
-  <div class="card">
-    <h2>Schedule</h2>
-    <div class="toolbar">
-      <label><input type="checkbox" id="sched-enabled"> enabled</label>
-      <label>timezone <input id="sched-timezone" value="UTC" size="8"></label>
-      <label>default mode
-        <select id="sched-mode">
-          <option value="ggak">ggak</option>
-          <option value="lrit">lrit</option>
-          <option value="hrit">hrit</option>
-        </select>
-      </label>
-      <button id="sched-add">add entry</button>
-      <button id="sched-save" class="primary">Save</button>
-      <button id="sched-reload">Reload</button>
-      <span class="muted" id="sched-result"></span>
-    </div>
-    <span class="muted" id="sched-state"></span>
+  <section class="card">
+    <h2>Pass timetable - 24 h, UTC</h2>
+    <figure class="timeline">
+      <svg id="tl-svg" viewBox="0 0 1000 150" role="img"
+           aria-labelledby="tl-title tl-desc">
+        <title id="tl-title">Elektro-L pass timetable</title>
+        <desc id="tl-desc">HRIT and LRIT reception windows across a 24 hour day.</desc>
+      </svg>
+    </figure>
+    <dl class="tl-list" id="tl-list"></dl>
+    <p class="figcap" id="tl-cap">Loading the timetable…</p>
+  </section>
+
+  <section class="card">
+    <h2>Windows</h2>
     <table>
       <thead>
-        <tr><th>name</th><th>start</th><th>end</th><th>mode</th><th>priority</th><th>frequency (Hz)</th><th></th></tr>
+        <tr><th>window</th><th>start</th><th>end</th><th class="num">minutes</th><th>mode</th></tr>
       </thead>
       <tbody id="sched-rows"></tbody>
     </table>
-  </div>
+    <p class="figcap" id="sched-state">reading the schedule…</p>
+  </section>
 </main>
 <script src="/js/api.js"></script>
 <script src="/js/app.js"></script>

@@ -3,40 +3,45 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ElektroDump — Dashboard</title>
+<title>ElektroDump - Station</title>
 <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
 <header class="topbar" id="topbar"></header>
 <main>
-  <div class="grid">
-    <div class="card">
-      <h2>Latest visual</h2>
-      <img id="latest-image" alt="Latest visual product">
-      <div class="muted" id="latest-caption" style="margin-top:8px">loading…</div>
+  <section class="card">
+    <h2>Link - Elektro-L received level</h2>
+    <div class="linkbar">
+      <div class="big" id="dash-snr">-</div>
+      <div class="stats">
+        <div class="stat"><b id="dash-avg">-</b><i>avg 5 s</i></div>
+        <div class="stat"><b id="dash-lock">-</b><i>sync</i></div>
+        <div class="stat"><b id="dash-ber">-</b><i>ber</i></div>
+        <div class="stat"><b id="dash-cadus">-</b><i>cadu</i></div>
+        <div class="stat"><b id="dash-mode">-</b><i>mode</i></div>
+        <div class="stat"><b id="dash-next">-</b><i>next window</i></div>
+      </div>
     </div>
-    <div class="card">
-      <h2>Signal</h2>
-      <div class="big" id="dash-snr">—</div>
-      <dl class="kv">
-        <dt>lock</dt><dd id="dash-lock">—</dd>
-        <dt>BER</dt><dd id="dash-ber">—</dd>
-        <dt>CADU</dt><dd id="dash-cadus">—</dd>
-        <dt>SDR</dt><dd id="dash-sdr">—</dd>
-      </dl>
-      <h2 style="margin-top:12px">SNR (recent)</h2>
-      <canvas id="spark" width="600" height="120"></canvas>
-    </div>
-    <div class="card">
+    <canvas id="spark" width="900" height="88" style="margin-top:20px"></canvas>
+  </section>
+
+  <div class="grid two">
+    <section class="card">
+      <h2>Latest product</h2>
+      <img id="latest-image" alt="Latest visual product" style="display:none">
+      <div class="emptybox" id="latest-empty">waiting for the first decoded xRIT pass</div>
+      <div class="muted" id="latest-caption" style="font-family:var(--mono);font-size:12px"></div>
+    </section>
+
+    <section class="card">
       <h2>Station</h2>
       <dl class="kv">
-        <dt>mode</dt><dd id="dash-mode">—</dd>
-        <dt>satellite</dt><dd id="dash-satellite">—</dd>
-        <dt>version</dt><dd id="dash-version">—</dd>
-        <dt>pipeline</dt><dd id="dash-state">—</dd>
-        <dt>next window</dt><dd id="dash-next">—</dd>
+        <dt>radio</dt><dd id="dash-sdr">-</dd>
+        <dt>satellite</dt><dd id="dash-satellite">-</dd>
+        <dt>pipeline</dt><dd id="dash-state">-</dd>
+        <dt>build</dt><dd id="dash-version">-</dd>
       </dl>
-    </div>
+    </section>
   </div>
 </main>
 <script src="/js/api.js"></script>

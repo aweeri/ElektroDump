@@ -12,8 +12,13 @@ bool WebServer::start(const Config& cfg, const WebContext& ctx) {
         ctx_.config = &cfg;
     }
 
+    // Public mode makes the whole surface read-only: the schedule can no longer
+    // be rewritten and the webhook test cannot be fired at the station.
+    router_.set_read_only(cfg.get_bool("web.public", false));
     register_status_api(router_, ctx_);
+    register_history_api(router_, ctx_);
     register_fft_api(router_, ctx_);
+    register_constellation_api(router_, ctx_);
     register_products_api(router_, ctx_);
     register_schedule_api(router_, ctx_);
     register_ggak_api(router_, ctx_);

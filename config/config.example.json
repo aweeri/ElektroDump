@@ -15,6 +15,8 @@
     "serial": "",
     "gain_tenth_db": 300,
     "bias_tee": true,
+    "wideband_hz": 0,
+    "wideband_center_hz": 1692000000,
     "ppm": 0,
     "airspy": {
       "lna_gain": 10,
@@ -54,6 +56,7 @@
     "costas_bw": 0.02,
     "max_carrier_offset_hz": 50000,
     "subcarrier_hz": 0,
+    "subcarrier_enabled": true,
     "target_sps": 8,
     "rrc_taps": 33,
     "mock": {
@@ -98,7 +101,7 @@
     "rs_interleave": 4,
     "rs_type": "rs223",
     "rs_usecheck": true,
-    "rs_dualbasis": false,
+    "rs_dualbasis": true,
     "rrc_taps": 33,
     "viterbi_ber_threshold": 0.3,
     "viterbi_outsync_after": 20,

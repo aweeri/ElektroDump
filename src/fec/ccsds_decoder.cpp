@@ -1,5 +1,8 @@
 #include "fec/ccsds_decoder.h"
 
+#include <cstdio>
+#include <cstdlib>
+
 namespace ed::fec {
 
 void CcsdsDecoder::configure(const FecConfig& cfg) {
@@ -64,6 +67,24 @@ void CcsdsDecoder::push_soft(const int8_t* soft, std::size_t n,
     viterbi_.push(soft, n, bits_);
     if (bits_.empty()) {
         return;
+    }
+    // Debug hook: dump the Viterbi output so framing can be checked against an
+    // independent reference without instrumenting the deframer.
+    {
+        static FILE* vdump = nullptr;
+        static bool checked = false;
+        if (!checked) {
+            checked = true;
+            const char* path = std::getenv("ED_DUMP_VBITS");
+            if (path != nullptr) {
+                vdump = std::fopen(path, "wb");
+            }
+        }
+        if (vdump != nullptr) {
+            for (uint8_t bit : bits_) {
+                std::fputc(bit ? '1' : '0', vdump);
+            }
+        }
     }
     cadus_.clear();
     deframer_.push(bits_.data(), bits_.size(), cadus_);

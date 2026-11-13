@@ -58,13 +58,22 @@ void GardnerTiming::process(const std::complex<float>* in, std::size_t n,
         if (next_sym_ > t - 1.0 && next_sym_ <= t) {
             const std::complex<float> sym = interpolate(next_sym_);
             if (have_prev_ && have_mid_) {
-                const double e =
+                double e =
                     (static_cast<double>(sym.real()) -
                      static_cast<double>(prev_sym_.real())) *
                         static_cast<double>(mid_.real()) +
                     (static_cast<double>(sym.imag()) -
                      static_cast<double>(prev_sym_.imag())) *
                         static_cast<double>(mid_.imag());
+                // Normalise by the local symbol energy. The raw Gardner error
+                // scales with signal amplitude squared, so at the level this
+                // front end actually delivers (~0.03) the loop gains were
+                // effectively zero and the clock could not track the satellite:
+                // the timing slipped periodically and RS saw error bursts.
+                const double energy =
+                    static_cast<double>(std::norm(sym)) +
+                    static_cast<double>(std::norm(mid_)) + 1e-12;
+                e /= energy;
                 next_sym_ -= phase_gain_ * e;
                 next_mid_ -= phase_gain_ * e;
                 period_ -= period_gain_ * e;
